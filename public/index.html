@@ -3,147 +3,516 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>Ride</title>
+<title>RouteMate - Smart Peer Ride Pooling</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;transition:none!important;animation:none!important;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden;background:#000;color:#fff}
-#map{position:absolute;inset:0;background:#1a1d24}
-/* Mapbox Dark-v11 tiles are natively dark */
-.leaflet-tile-pane{}
-.leaflet-control-attribution{font-size:9px!important;background:#000a!important;color:#aaa!important}
-.leaflet-control-attribution a{color:#ccc!important}
+:root {
+  --primary: #8B5CF6;
+  --accent: #06B6D4;
+  --grad: linear-gradient(135deg, #8B5CF6, #06B6D4);
+  --glass: rgba(20, 20, 35, 0.75);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --text: #F5F3FF;
+  --pickup: #34D399;
+  --safety: #FB7185;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
+#map{position:absolute;inset:0;background:#141423}
+.leaflet-control-attribution{font-size:9px!important;background:rgba(10,10,20,0.8)!important;color:#aaa!important;border-radius:6px;padding:2px 6px;margin:8px 8px 70px!important}
+.leaflet-control-attribution a{color:#06B6D4!important;text-decoration:none}
+
+/* Map layer switcher */
+.map-layer-selector{position:absolute;top:16px;right:max(16px,calc(50% - 244px));z-index:999;display:flex;gap:6px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--glass-border);border-radius:999px;padding:4px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
+.map-layer-btn{border:0;background:none;color:#aaa;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;transition:all .25s ease;display:flex;align-items:center;gap:4px}
+.map-layer-btn.active{background:var(--grad);color:#fff;box-shadow:0 0 12px rgba(139,92,246,0.6)}
+
+/* Screen containers */
 .screen{position:absolute;inset:0;z-index:1000;display:none;pointer-events:none}
 .screen>*{pointer-events:auto}
-.full{background:#000;pointer-events:auto;padding:16px max(16px,calc(50% - 244px));overflow-y:auto}
-.back{position:absolute;top:16px;left:max(16px,calc(50% - 244px));width:44px;height:44px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;z-index:5;cursor:pointer}
-.locate{position:absolute;top:70px;right:max(14px,calc(50% - 246px));width:46px;height:46px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;color:#4da3ff;cursor:pointer}
-.sheet{position:absolute;left:50%;transform:translateX(-50%);width:100%;max-width:520px;bottom:0;background:#0b0b0c;border-radius:22px 22px 0 0;padding:10px 16px 0;box-shadow:0 -6px 24px #000a;max-height:75vh;overflow-y:auto}
-.handle{width:40px;height:4px;border-radius:2px;background:#444;margin:0 auto 12px}
-.chips{display:flex;gap:8px;margin-bottom:12px}
-.chip{flex:1;padding:9px;border-radius:20px;border:1px solid #444;background:none;color:#fff;font-weight:600;font-size:14px}
-.chip.on{background:#FFC61A;color:#000;border-color:#FFC61A}
-.pill{display:flex;align-items:center;gap:10px;background:#16181c;border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14px;cursor:pointer}
-.pill span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dotG,.dotO{width:18px;height:18px;border-radius:50%;flex:none}
-.dotG{background:#12c04f;box-shadow:0 0 0 4px #0a3d1c}
-.dotO{background:#ff6d00;box-shadow:0 0 0 4px #5a2a00}
-.where{display:flex;align-items:center;gap:12px;border:2px solid #333;border-bottom:2px solid #FFC61A;border-radius:30px;padding:14px 16px;font-size:18px;font-weight:700;margin-bottom:6px;cursor:pointer}
-.rc{max-height:24vh;overflow-y:auto}
-.item{display:flex;gap:12px;padding:14px 2px;border-bottom:1px dashed #333;align-items:flex-start;cursor:pointer}
-.km{width:46px;font-size:12px;color:#aaa;text-align:center;flex:none;padding-top:3px}
-.nm{font-weight:700;font-size:16px}
-.ad{color:#aaa;font-size:14px;margin-top:2px}
-.nav{display:flex;border-top:1px solid #222;margin:8px -16px 0;background:#0b0b0c}
-.nav div{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0;font-size:12px;color:#bbb}
-.nav .on{color:#fff;font-weight:700}
+.full{background:#0d0d17;pointer-events:auto;padding:16px max(16px,calc(50% - 244px)) 90px;overflow-y:auto}
+
+.back{position:absolute;top:16px;left:max(16px,calc(50% - 244px));width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);color:#fff;display:flex;align-items:center;justify-content:center;z-index:1050;cursor:pointer;transition:transform .2s;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
+.back:active{transform:scale(0.92)}
+
+.locate{position:absolute;bottom:calc(66vh + 16px);right:max(16px,calc(50% - 244px));width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;color:var(--accent);cursor:pointer;z-index:999;box-shadow:0 6px 20px rgba(0,0,0,0.4);transition:transform .2s}
+.locate:active{transform:scale(0.92)}
+
+/* Glass bottom sheet */
+.bottom-sheet{
+  background: var(--glass);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -10px 40px rgba(139, 92, 246, 0.25);
+  color: var(--text);
+  animation: sheetUp 0.6s cubic-bezier(.2, .8, .2, 1);
+  position:absolute;left:50%;transform:translateX(-50%);width:100%;max-width:520px;bottom:0;padding:12px 18px 76px;max-height:78vh;overflow-y:auto;
+}
+@keyframes sheetUp {
+  from { transform: translate(-50%, 100%); opacity: 0; }
+  to   { transform: translate(-50%, 0);    opacity: 1; }
+}
+.handle{width:42px;height:4px;border-radius:2px;background:rgba(255,255,255,0.25);margin:0 auto 14px}
+
+/* Passenger / Rider toggle */
+.chips{display:flex;gap:8px;margin-bottom:14px;background:rgba(255,255,255,0.06);border-radius:999px;padding:4px}
+.chip{flex:1;padding:10px;border-radius:999px;border:0;background:none;color:#aaa;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.35s ease;display:flex;align-items:center;justify-content:center;gap:6px}
+.tab-active{
+  background: var(--grad);
+  color: #fff;
+  border-radius: 999px;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+  transition: all 0.35s ease;
+}
+
+/* Pickup pill */
+.pill{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:12px 16px;margin-bottom:12px;font-size:14px;cursor:pointer;transition:background .2s}
+.pill:hover{background:rgba(255,255,255,0.09)}
+.pill span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.dotG,.dotO{width:16px;height:16px;border-radius:50%;flex:none}
+.dotG{background:var(--pickup);box-shadow:0 0 10px rgba(52,211,153,0.7)}
+.dotO{background:#F97316;box-shadow:0 0 10px rgba(249,115,22,0.7)}
+
+/* Search bar with animated glowing border */
+.search-bar{
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background-image: linear-gradient(rgba(20,20,35,.85), rgba(20,20,35,.85)), var(--grad);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  transition: box-shadow .3s, transform .2s;
+  display:flex;align-items:center;gap:12px;padding:14px 18px;font-size:16px;font-weight:700;margin-bottom:8px;cursor:pointer;color:var(--text);
+}
+.search-bar:focus-within{box-shadow:0 0 22px rgba(6, 182, 212, 0.55)}
+.search-bar:active{transform:scale(0.99)}
+.search-bar .material-icons{color:var(--accent)}
+
+/* Pickup pin: pulsing ripple */
 #pin{position:absolute;left:50%;top:38%;transform:translate(-50%,-100%);z-index:900;display:none;pointer-events:none;text-align:center}
-#pin .lab{display:inline-block;background:#7fd6a0;color:#000;font-weight:700;padding:7px 14px;border-radius:20px;font-size:14px}
-#pin .material-icons{display:block;font-size:46px;color:#2ecc71;line-height:46px}
-#pin.drop .lab{background:#ff9a7a}
-#pin.drop .material-icons{color:#e53935}
-.box{border:1px solid #333;border-radius:18px;padding:4px 14px;margin:64px 0 14px;background:#0b0b0c}
+#pin .lab{display:inline-block;background:var(--pickup);color:#0d1813;font-weight:800;padding:6px 14px;border-radius:20px;font-size:13px;box-shadow:0 4px 14px rgba(52,211,153,0.5)}
+#pin .material-icons{display:block;font-size:46px;color:var(--pickup);line-height:46px;position:relative}
+.pickup-pin{position:relative}
+.pickup-pin::after{
+  content: "";
+  position: absolute; inset: -8px;
+  border-radius: 50%;
+  border: 2px solid var(--pickup);
+  animation: ripple 1.8s ease-out infinite;
+}
+@keyframes ripple {
+  from { transform: scale(.6); opacity: .9; }
+  to   { transform: scale(1.8); opacity: 0; }
+}
+#pin.drop .lab{background:#F97316;color:#fff;box-shadow:0 4px 14px rgba(249,115,22,0.5)}
+#pin.drop .material-icons{color:#F97316}
+#pin.drop .pickup-pin::after{border-color:#F97316}
+
+/* Recents & suggestions list items */
+.rc{max-height:22vh;overflow-y:auto;margin:6px 0}
+.place-item{
+  display:flex;gap:12px;padding:12px 10px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);align-items:flex-start;cursor:pointer;border-radius:16px;
+  transition: background .25s, transform .25s;
+  animation: fadeSlide .5s ease both;
+}
+.place-item:hover{
+  background: rgba(139, 92, 246, 0.15);
+  transform: translateX(4px);
+}
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { transform: translateY(0); }
+}
+.km{width:48px;font-size:11px;color:#aaa;text-align:center;flex:none;padding-top:2px;font-weight:600}
+.nm{font-weight:700;font-size:15px;color:var(--text)}
+.ad{color:#94a3b8;font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+
+/* Persistent Bottom Nav Bar */
+.bottom-nav-bar{
+  position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;height:66px;
+  background:rgba(13,13,23,0.95);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border-top:1px solid var(--glass-border);
+  display:flex;align-items:center;justify-content:space-around;z-index:1500;padding:0 8px;box-shadow:0 -4px 20px rgba(0,0,0,0.5);
+}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0;font-size:11px;color:#94a3b8;cursor:pointer;transition:all .25s;font-weight:600}
+.nav-item.active{color:var(--accent);filter:drop-shadow(0 0 8px var(--accent))}
+.nav-item .material-icons{font-size:24px;margin-bottom:2px}
+
+/* Book button with shimmer */
+.book-btn{
+  width:100%;padding:14px;border:none;border-radius:16px;
+  background: var(--grad);
+  color: #fff;
+  font-size:16px;font-weight:800;
+  position: relative;
+  overflow: hidden;
+  cursor:pointer;
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+  transition: transform .2s, box-shadow .2s;
+  margin-top:8px;
+}
+.book-btn::before {
+  content: "";
+  position: absolute; top: 0; left: -100%;
+  width: 60%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
+  animation: shimmer 2.5s infinite;
+}
+@keyframes shimmer { to { left: 140%; } }
+.book-btn:active { transform: scale(.96); }
+
+/* Search screen inputs */
+.box{border:1px solid var(--glass-border);border-radius:20px;padding:6px 16px;margin:64px 0 16px;background:var(--glass);backdrop-filter:blur(18px)}
 .row{display:flex;align-items:center;gap:14px;padding:12px 0}
-.row+.row{border-top:1px solid #333}
-.row input{flex:1;background:none;border:0;outline:0;color:#fff;font-size:16px;min-width:0}
-.btns{display:flex;gap:10px;margin-bottom:6px}
-.btns button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:26px;background:none;border:1px solid #444;color:#fff;font-size:14px}
-.bar{background:#16181c;border-radius:14px;padding:14px;font-size:14px;margin-bottom:10px}
-.vrow{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;border:2px solid transparent;margin-bottom:6px;cursor:pointer}
-.vrow.on{border-color:#fff}
-.vrow .ic{width:50px;text-align:center}
-.vrow .ic .material-icons{font-size:38px;color:#ffd84d}
-.vrow .mid{flex:1}
-.vrow .vn{font-weight:700;font-size:17px}
-.vrow .sub{color:#aaa;font-size:13px;margin-top:2px}
-.vrow .pr{font-weight:700;font-size:20px;color:#ffb020}
-.opts{display:flex;align-items:center;gap:10px;font-size:14px;padding:8px 4px;flex-wrap:wrap}
-.opts select{background:#16181c;color:#fff;border:1px solid #333;border-radius:8px;padding:6px}
-.pay{display:flex;align-items:center;gap:10px;padding:10px 4px;color:#ddd;font-weight:600}
-.go{width:100%;padding:16px;border:0;border-radius:30px;background:#FFC61A;color:#000;font-size:18px;font-weight:700;margin:8px 0 16px}
-.card{background:#16181c;border-radius:14px;padding:12px;margin-bottom:8px;font-size:14px}
-.card button{margin-top:8px;padding:9px 16px;border:0;border-radius:20px;background:#FFC61A;color:#000;font-weight:700}
-.card button:disabled{background:#333;color:#999}
-.live{color:#4cd37b;font-weight:600}
-.mk{width:22px;height:22px;border-radius:50%;background:#12c04f;border:4px solid #fff}
+.row:first-child{border-bottom:1px solid rgba(255,255,255,0.08)}
+.row input{background:none;border:0;color:#fff;font-size:15px;flex:1;outline:none;font-weight:600}
+.row input::placeholder{color:#64748b}
+.btns{display:flex;gap:10px;margin-bottom:16px}
+.btns button{flex:1;padding:11px 14px;border-radius:999px;border:1px solid var(--glass-border);background:var(--glass);color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:background .2s}
+.btns button:hover{background:rgba(255,255,255,0.12)}
+
+/* Vehicle selection rows */
+.vrow{display:flex;align-items:center;gap:14px;padding:12px;border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;margin-bottom:8px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,0.03)}
+.vrow.on{border-color:var(--primary);background:rgba(139,92,246,0.15);box-shadow:0 0 16px rgba(139,92,246,0.3)}
+.vrow .vico{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
+.vrow .vname{font-weight:700;font-size:15px}
+.vrow .vsub{font-size:12px;color:#94a3b8;margin-top:2px}
+.vrow .vpr{font-weight:800;font-size:16px;color:#fff;margin-left:auto;text-align:right}
+.vrow .vpr small{display:block;font-size:10px;color:var(--accent);font-weight:600}
+
+/* Women safety pill */
+.safety-option {
+  border: 1px solid var(--safety);
+  color: var(--safety);
+  background: rgba(251, 113, 133, 0.1);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin-top:4px;
+}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:3000;display:none;align-items:flex-end;justify-content:center}
+.modal-content{background:var(--glass);backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--glass-border);border-radius:28px 28px 0 0;width:100%;max-width:520px;max-height:86vh;overflow-y:auto;padding:20px;color:var(--text);box-shadow:0 -10px 40px rgba(139,92,246,0.3);animation:sheetUp .4s ease}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-header h3{font-size:20px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.close-btn{background:rgba(255,255,255,0.1);border:0;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* Form inputs */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#cbd5e1}
+.form-input{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;outline:none}
+.form-input:focus{border-color:var(--accent);box-shadow:0 0 10px rgba(6,182,212,0.4)}
+.upload-card{border:1.5px dashed rgba(255,255,255,0.2);border-radius:16px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s;background:rgba(255,255,255,0.02)}
+.upload-card:hover{border-color:var(--primary);background:rgba(139,92,246,0.08)}
+.upload-card.uploaded{border-color:var(--pickup);border-style:solid;background:rgba(52,211,153,0.1)}
+.upload-card input{display:none}
+
+/* Service catalog cards */
+.service-card{background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px;margin-bottom:12px;display:flex;gap:14px;align-items:center;cursor:pointer;transition:transform .2s,background .2s}
+.service-card:hover{transform:translateY(-2px);background:rgba(255,255,255,0.07)}
+
+/* Profile */
+.profile-avatar{width:76px;height:76px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff;margin:0 auto 12px;box-shadow:0 0 24px rgba(139,92,246,0.6)}
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;margin-top:6px}
+.status-pill.verified{background:rgba(52,211,153,0.15);color:var(--pickup);border:1px solid var(--pickup)}
+.status-pill.unverified{background:rgba(251,113,133,0.15);color:var(--safety);border:1px solid var(--safety)}
+
+/* Match cards */
+.card{border:1px solid var(--glass-border);border-radius:18px;padding:14px;margin-top:10px;font-size:13px;background:rgba(255,255,255,0.04)}
+.card b{font-size:15px;color:#fff}
+.card button{margin-top:8px;padding:9px 16px;border:0;border-radius:10px;background:var(--grad);color:#fff;font-weight:700;cursor:pointer}
 </style>
 </head>
 <body>
-
 <div id="map"></div>
-<div id="pin"><div class="lab" id="pinLab">Pickup point</div><span class="material-icons">place</span></div>
 
-<!-- HOME -->
-<div id="home" class="screen">
-  <div class="locate" id="locBtn"><span class="material-icons">my_location</span></div>
-  <div class="sheet">
+<!-- Top map layer selector -->
+<div class="map-layer-selector">
+  <button class="map-layer-btn active" data-layer="satellite">🛰️ Satellite</button>
+  <button class="map-layer-btn" data-layer="terrain">⛰️ Terrain</button>
+  <button class="map-layer-btn" data-layer="streets">🗺️ Streets</button>
+  <button class="map-layer-btn" data-layer="dark">🌙 Dark</button>
+</div>
+
+<!-- Center map pin -->
+<div id="pin"><div class="lab" id="pinLab">Pickup point</div><span class="material-icons pickup-pin">place</span></div>
+
+<!-- 1. HOME SCREEN (Ride) -->
+<div id="home" class="screen" style="display:block">
+  <div class="locate" id="locBtn" title="Current Location"><span class="material-icons">my_location</span></div>
+  <div class="bottom-sheet">
     <div class="handle"></div>
     <div class="chips">
-      <button class="chip on" id="mPass">Passenger</button>
-      <button class="chip" id="mRider">Rider</button>
+      <button class="chip tab-active" id="mPass"><span class="material-icons" style="font-size:18px">person</span>Passenger</button>
+      <button class="chip" id="mRider"><span class="material-icons" style="font-size:18px">two_wheeler</span>Rider</button>
     </div>
     <div class="pill" id="pickupPill"><span class="dotG"></span><span class="t" id="pickupText">Locating…</span></div>
-    <div class="where" id="whereBtn"><span class="material-icons">search</span>Where do you want to go?</div>
+    <div class="search-bar" id="whereBtn"><span class="material-icons">search</span>Where do you want to go?</div>
     <div class="rc" id="homeRecents"></div>
-    <div class="nav">
-      <div class="on"><span class="material-icons">home</span>Ride</div>
-      <div><span class="material-icons">near_me</span>All Services</div>
-      <div><span class="material-icons">beach_access</span>Travel</div>
-      <div><span class="material-icons">person_outline</span>Profile</div>
-    </div>
   </div>
 </div>
 
-<!-- SEARCH -->
+<!-- 2. SEARCH SCREEN -->
 <div id="search" class="screen full">
   <div class="back" id="searchBack"><span class="material-icons">arrow_back</span></div>
   <div class="box">
     <div class="row"><span class="dotG"></span><input id="inFrom" placeholder="Pickup location" autocomplete="off"></div>
-    <div class="row"><span class="dotO"></span><input id="inTo" placeholder="Drop location" autocomplete="off"></div>
+    <div class="row"><span class="dotO"></span><input id="inTo" placeholder="Drop location / Temple / Building" autocomplete="off"></div>
   </div>
   <div class="btns">
-    <button id="selMap"><span class="material-icons">place</span>Select from map</button>
+    <button id="selMap"><span class="material-icons">place</span>Select on map</button>
     <button id="curBtn"><span class="material-icons">my_location</span>Current location</button>
   </div>
   <div id="sugg"></div>
 </div>
 
-<!-- PICK ON MAP -->
+<!-- 3. PICK ON MAP SCREEN -->
 <div id="pick" class="screen">
   <div class="back" id="pickBack"><span class="material-icons">arrow_back</span></div>
-  <div class="sheet">
+  <div class="bottom-sheet">
     <div class="handle"></div>
-    <div class="bar" id="pickAddr">Move the map to choose a location</div>
-    <button class="go" id="pickOk">Confirm location</button>
+    <div class="pill"><span class="dotG"></span><span class="t" id="pickAddr">Move map to place pin</span></div>
+    <button class="book-btn" id="pickOk">Confirm location</button>
   </div>
 </div>
 
-<!-- BOOK -->
+<!-- 4. BOOKING / MATCHING SCREEN -->
 <div id="book" class="screen">
   <div class="back" id="bookBack"><span class="material-icons">arrow_back</span></div>
-  <div class="sheet" id="bookSheet">
+  <div class="bottom-sheet" id="bookSheet">
     <div class="handle"></div>
     <div id="vehicleView">
       <div id="vList"></div>
-      <div class="opts" id="opts">
-        <span class="material-icons">wc</span>
-        <select id="myGender"><option value="male">I am male</option><option value="female">I am female</option></select>
-        <label id="femWrap" style="display:none"><input type="checkbox" id="femaleOnly"> Female rider only</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="material-icons" style="color:var(--accent)">person</span>
+          <select id="myGender" style="background:rgba(255,255,255,0.1);border:1px solid var(--glass-border);color:#fff;padding:6px 10px;border-radius:10px;outline:none">
+            <option value="male">Male user</option>
+            <option value="female">Female user</option>
+          </select>
+        </div>
+        <label id="femWrap" class="safety-option" style="display:none;cursor:pointer">
+          <input type="checkbox" id="femaleOnly" style="accent-color:var(--safety)"> Women-Only Pool
+        </label>
       </div>
-      <div class="pay"><span class="material-icons" style="color:#4cd37b">payments</span>Cash</div>
-      <button class="go" id="goBtn">Book Bike</button>
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#94a3b8;padding:4px 0 8px">
+        <span class="material-icons" style="color:var(--pickup);font-size:18px">payments</span> Direct fare split to rider
+      </div>
+      <button class="book-btn" id="goBtn">Book Bike</button>
     </div>
     <div id="matchView" style="display:none">
-      <div class="pay" id="matchBack" style="cursor:pointer"><span class="material-icons">arrow_back</span><span id="matchTitle">Matches on your route</span></div>
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0 10px" id="matchBack">
+        <span class="material-icons">arrow_back</span><span id="matchTitle" style="font-weight:700">Matches on your route</span>
+      </div>
       <div id="results"></div>
     </div>
   </div>
 </div>
 
+<!-- 5. SERVICES SCREEN -->
+<div id="screenServices" class="screen full">
+  <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
+  <h2 style="font-size:22px;font-weight:800;margin:64px 0 6px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">All RouteMate Services</h2>
+  <p style="color:#94a3b8;font-size:13px;margin-bottom:20px">Peer-to-peer verified ride sharing at direct split rates</p>
+  
+  <div class="service-card" onclick="quickSelectVehicle('bike')">
+    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center">🏍️</div>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:16px">Bike Pooling</b>
+        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹7 - ₹10/km</span>
+      </div>
+      <p style="font-size:12px;color:#94a3b8;margin-top:2px">1 passenger · Fastest traffic bypass · Helmet provided</p>
+    </div>
+  </div>
+
+  <div class="service-card" onclick="quickSelectVehicle('auto')">
+    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center">🛺</div>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:16px">Auto Rickshaw</b>
+        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹7 - ₹13/km</span>
+      </div>
+      <p style="font-size:12px;color:#94a3b8;margin-top:2px">Up to 3 passengers · Split per individual seat</p>
+    </div>
+  </div>
+
+  <div class="service-card" onclick="quickSelectVehicle('eco')">
+    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(52,211,153,0.15);display:flex;align-items:center;justify-content:center">🚗</div>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:16px">Economy Car</b>
+        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹8 - ₹15/km</span>
+      </div>
+      <p style="font-size:12px;color:#94a3b8;margin-top:2px">Hatchbacks & compacts · AC comfort · 4 passengers</p>
+    </div>
+  </div>
+
+  <div class="service-card" onclick="quickSelectVehicle('sedan')">
+    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(249,115,22,0.15);display:flex;align-items:center;justify-content:center">🚘</div>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:16px">Sedan Prime</b>
+        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹10 - ₹18/km</span>
+      </div>
+      <p style="font-size:12px;color:#94a3b8;margin-top:2px">Spacious legroom & boot space · Top-rated riders</p>
+    </div>
+  </div>
+
+  <div class="service-card" onclick="quickSelectVehicle('suv')">
+    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(236,72,153,0.15);display:flex;align-items:center;justify-content:center">🚙</div>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:16px">XL SUV</b>
+        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹13 - ₹22/km</span>
+      </div>
+      <p style="font-size:12px;color:#94a3b8;margin-top:2px">6 passenger capacity · Family & luggage ready</p>
+    </div>
+  </div>
+</div>
+
+<!-- 6. ACTIVITY / TRAVEL SCREEN -->
+<div id="screenTravel" class="screen full">
+  <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
+  <h2 style="font-size:22px;font-weight:800;margin:64px 0 6px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Activity & Trips</h2>
+  <p style="color:#94a3b8;font-size:13px;margin-bottom:20px">Your live pooling rides and travel history</p>
+  
+  <div class="service-card" style="border-color:var(--accent)">
+    <div style="font-size:30px">📍</div>
+    <div style="flex:1">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <b style="font-size:15px">Current Route Status</b>
+        <span style="color:var(--accent);font-weight:700;font-size:12px">ACTIVE SESSION</span>
+      </div>
+      <div id="travelActiveText" style="font-size:13px;color:#cbd5e1;margin-top:4px">No active route selected. Set pickup and drop to start.</div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px">
+    <h3 style="font-size:16px;margin-bottom:12px">Safety Features</h3>
+    <div style="background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:18px;padding:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <span class="material-icons" style="color:var(--safety)">shield</span>
+        <div><b>Gender Verification & Safe-Pooling</b><div style="font-size:12px;color:#94a3b8">Both riders & passengers display verified gender for safety</div></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="material-icons" style="color:var(--pickup)">call</span>
+        <div><b>Emergency Helpline</b><div style="font-size:12px;color:#94a3b8">Police SOS: 112 · Ambulance: 108</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 7. PROFILE SCREEN -->
+<div id="screenProfile" class="screen full">
+  <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
+  <div style="margin-top:64px;text-align:center">
+    <div class="profile-avatar" id="profAvatar">TK</div>
+    <h2 style="font-size:20px;font-weight:800" id="profNameDisplay">Tharun Kumar</h2>
+    <div id="profRiderStatusBadge" class="status-pill unverified">⚠️ Rider Unverified</div>
+  </div>
+
+  <div style="margin-top:24px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px">
+    <h3 style="font-size:15px;margin-bottom:14px;color:var(--accent)">User Information</h3>
+    <div class="form-group">
+      <label class="form-label">Display Name</label>
+      <input class="form-input" id="profNameInput" value="Tharun Kumar">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Gender</label>
+      <select class="form-input" id="profGenderInput">
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+      </select>
+    </div>
+    <button class="book-btn" onclick="saveProfileChanges()" style="padding:10px;font-size:14px">Save Profile</button>
+  </div>
+
+  <div style="margin-top:16px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px">
+    <h3 style="font-size:15px;margin-bottom:8px;color:var(--primary)">Rider Partner Status</h3>
+    <p style="font-size:12px;color:#94a3b8;margin-bottom:12px" id="profDocsSummary">Documents required before you can accept ride passengers.</p>
+    <button class="book-btn" onclick="openRiderDocsModal()" id="profDocsBtn" style="padding:10px;font-size:14px">Upload Rider Documents</button>
+  </div>
+</div>
+
+<!-- PERSISTENT BOTTOM NAVIGATION BAR -->
+<div class="bottom-nav-bar" id="bottomNav">
+  <div class="nav-item active" id="navRide" onclick="switchNav('ride')"><span class="material-icons">navigation</span>Ride</div>
+  <div class="nav-item" id="navServices" onclick="switchNav('services')"><span class="material-icons">electric_moped</span>Services</div>
+  <div class="nav-item" id="navTravel" onclick="switchNav('travel')"><span class="material-icons">route</span>Activity</div>
+  <div class="nav-item" id="navProfile" onclick="switchNav('profile')"><span class="material-icons">account_circle</span>Profile</div>
+</div>
+
+<!-- RIDER DOCUMENTS VERIFICATION MODAL -->
+<div class="modal-overlay" id="riderDocsModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Rider Partner Verification</h3>
+      <button class="close-btn" onclick="closeRiderDocsModal()"><span class="material-icons">close</span></button>
+    </div>
+    <p style="font-size:13px;color:#cbd5e1;margin-bottom:16px">Before driving in Rider mode, please upload your mandatory credentials for safety compliance:</p>
+    
+    <div class="form-group">
+      <label class="form-label">1. Driving Licence (DL)</label>
+      <input class="form-input" id="docDlNum" placeholder="Licence Number (e.g., AP07 20230001234)" style="margin-bottom:8px">
+      <label class="upload-card" id="cardDl">
+        <input type="file" onchange="markUploaded('cardDl', this)">
+        <span class="material-icons" style="color:var(--primary);font-size:26px">badge</span>
+        <div style="font-size:13px;font-weight:600;margin-top:4px" id="txtDl">Upload Licence (Front & Back)</div>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">2. Vehicle Registration Certificate (RC)</label>
+      <input class="form-input" id="docRcNum" placeholder="Vehicle Plate Number (e.g., AP 16 BK 5522)" style="margin-bottom:8px">
+      <label class="upload-card" id="cardRc">
+        <input type="file" onchange="markUploaded('cardRc', this)">
+        <span class="material-icons" style="color:var(--accent);font-size:26px">directions_car</span>
+        <div style="font-size:13px;font-weight:600;margin-top:4px" id="txtRc">Upload Vehicle RC (Front & Back)</div>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">3. Aadhaar Card (Govt ID)</label>
+      <input class="form-input" id="docAadhaarNum" placeholder="12-digit Aadhaar Number" style="margin-bottom:8px">
+      <label class="upload-card" id="cardAadhaar">
+        <input type="file" onchange="markUploaded('cardAadhaar', this)">
+        <span class="material-icons" style="color:var(--pickup);font-size:26px">fingerprint</span>
+        <div style="font-size:13px;font-weight:600;margin-top:4px" id="txtAadhaar">Upload Aadhaar Card</div>
+      </label>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">4. Vehicle Insurance Policy</label>
+      <label class="upload-card" id="cardInsurance">
+        <input type="file" onchange="markUploaded('cardInsurance', this)">
+        <span class="material-icons" style="color:var(--safety);font-size:26px">verified_user</span>
+        <div style="font-size:13px;font-weight:600;margin-top:4px" id="txtInsurance">Upload Valid Insurance Policy</div>
+      </label>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;gap:10px;margin:16px 0">
+      <input type="checkbox" id="docConsent" checked style="accent-color:var(--primary);margin-top:3px">
+      <label for="docConsent" style="font-size:12px;color:#cbd5e1">I certify that all vehicle and identity documents provided are genuine and valid.</label>
+    </div>
+
+    <button class="book-btn" onclick="submitRiderVerification()">Submit & Verify Rider Mode</button>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ================= BASICS =================
+// ================= BASICS & CONFIG =================
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const PIN_Y=.38, DEFAULT=[16.5062,80.648];
@@ -151,15 +520,46 @@ const S={mode:"passenger",stage:"home",target:"drop",active:"to",pickup:null,dro
          vehicle:"bike",route:null,dist:0,dur:0,surge:1};
 let routeLine=null, markers={}, muteUntil=0, bookTok=0, sug=[];
 
+const CID = localStorage.getItem("cid")||("c_"+Math.random().toString(36).slice(2,10));
+localStorage.setItem("cid",CID);
+
+// ================= MAPBOX MAP & SATELLITE/TERRAIN LAYERS =================
 const map=L.map("map",{zoomControl:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false,inertia:false}).setView(DEFAULT,15);
 const MAPBOX_TOKEN = atob("cGsuZXlKMUlqb2ljM1Z1Ym1Gd2RTSXNJbUVpT2lKamJYWTFNM2s0ZFdzd01Yb3pNbmR3Y21Ga1ltMDViak16SW4wLlpjLXJFNnZoNUFYZU1mN2xfWGt0bXc=");
-L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
-  tileSize: 256,
-  maxZoom: 19,
-  attribution: '© <a href="https://www.mapbox.com/" target="_blank">Mapbox</a> © <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>'
-}).addTo(map);
-map.attributionControl.setPosition("topright");
 
+const MAP_LAYERS = {
+  satellite: L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
+    tileSize: 256, maxZoom: 19, attribution: '© Mapbox © OpenStreetMap'
+  }),
+  terrain: L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
+    tileSize: 256, maxZoom: 19, attribution: '© Mapbox © OpenStreetMap'
+  }),
+  streets: L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
+    tileSize: 256, maxZoom: 19, attribution: '© Mapbox © OpenStreetMap'
+  }),
+  dark: L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
+    tileSize: 256, maxZoom: 19, attribution: '© Mapbox © OpenStreetMap'
+  })
+};
+
+let currentLayerKey = "satellite"; // Start on colorful satellite map
+MAP_LAYERS[currentLayerKey].addTo(map);
+
+function setMapLayer(name){
+  if(currentLayerKey === name) return;
+  map.removeLayer(MAP_LAYERS[currentLayerKey]);
+  MAP_LAYERS[name].addTo(map);
+  currentLayerKey = name;
+  document.querySelectorAll(".map-layer-btn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.layer === name);
+  });
+}
+
+document.querySelectorAll(".map-layer-btn").forEach(btn=>{
+  btn.onclick = () => setMapLayer(btn.dataset.layer);
+});
+
+// ================= UTILITIES =================
 const debounce=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
 function km(a,b){const R=6371,r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lng-a.lng);
   const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
@@ -175,7 +575,9 @@ function goTo(lat,lng,z){
 // ================= SCREENS =================
 function show(stage,target){
   S.stage=stage; if(target)S.target=target;
-  ["home","search","pick","book"].forEach(s=>$(s).style.display=s===stage?"block":"none");
+  ["home","search","pick","book","screenServices","screenTravel","screenProfile"].forEach(s=>{
+    if($(s)) $(s).style.display = s === stage ? "block" : "none";
+  });
   $("pin").style.display=(stage==="home"||stage==="pick")?"block":"none";
   const drop=stage==="pick"&&S.target==="drop";
   $("pin").className=drop?"drop":"";
@@ -214,6 +616,7 @@ async function reverse(lat,lng){
     return j.display_name?short(j.display_name,3):"Pinned location";
   }catch(e){return "Pinned location";}
 }
+
 async function searchPlaces(q){
   if(!q||q.trim().length<2)return[];
   const c=S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
@@ -248,13 +651,6 @@ async function searchPlaces(q){
       }
     }
   }catch(e){}
-  try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=in&q=${encodeURIComponent(q)}`);
-    if(r.ok){
-      const j=await r.json();
-      if(j&&j.length)return j.map(x=>({lat:+x.lat,lng:+x.lon,label:short(x.display_name,4)}));
-    }
-  }catch(e){}
   return [];
 }
 
@@ -281,10 +677,11 @@ map.on("moveend",()=>{
   }
 });
 
-// ================= CURRENT LOCATION =================
+// ================= LOCATION =================
 async function setPickup(lat,lng,label,move){
   S.pickup={lat,lng,label:label||"Locating…"};
-  $("pickupText").textContent=S.pickup.label; $("inFrom").value=label||"";
+  $("pickupText").textContent=S.pickup.label;
+  $("inFrom").value=S.pickup.label;
   if(move)goTo(lat,lng,16);
   if(!label){
     const l=await reverse(lat,lng);
@@ -308,14 +705,17 @@ function renderList(el,list){
   sug=list;
   const isRecent=el.id==="homeRecents";
   const icon=isRecent?"history":"place";
-  const iconColor=isRecent?"#888":"#FFC61A";
+  const iconColor=isRecent?"#94a3b8":"var(--accent)";
   const from=S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
   el.innerHTML=list.map((p,i)=>{
     const parts=p.label.split(",");
-    return `<div class="item" data-i="${i}"><div class="km"><span class="material-icons" style="font-size:20px;color:${iconColor}">${icon}</span><br>${km(from,p).toFixed(1)} km</div>
-      <div><div class="nm">${esc(parts[0])}</div><div class="ad">${esc(parts.slice(1).join(","))}</div></div></div>`;
+    const d=km(from,p);
+    return `<div class="place-item" data-i="${i}">
+      <div class="km"><span class="material-icons" style="font-size:20px;color:${iconColor}">${icon}</span><br>${d.toFixed(1)} km</div>
+      <div><div class="nm">${esc(parts[0])}</div><div class="ad">${esc(parts.slice(1).join(","))}</div></div>
+    </div>`;
   }).join("");
-  el.querySelectorAll(".item").forEach(it=>it.onclick=()=>choose(sug[+it.dataset.i],el.id==="homeRecents"?"to":null));
+  el.querySelectorAll(".place-item").forEach(it=>it.onclick=()=>choose(sug[+it.dataset.i],el.id==="homeRecents"?"to":null));
 }
 function renderRecents(){renderList($("homeRecents"),recents());}
 
@@ -353,7 +753,7 @@ async function onType(which,q){
 $("inFrom").addEventListener("input",debounce(e=>onType("from",e.target.value),350));
 $("inTo").addEventListener("input",debounce(e=>onType("to",e.target.value),350));
 
-// ================= SELECT FROM MAP =================
+// ================= MAP SELECTION =================
 $("selMap").onclick=()=>{
   const target=S.active==="from"?"pickup":"drop";
   const base=target==="drop"&&S.drop?S.drop:S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
@@ -367,190 +767,321 @@ $("pickOk").onclick=()=>{
   if(!S.temp)return;
   const p={...S.temp};
   if(S.target==="pickup"){
-    S.pickup=p;$("pickupText").textContent=p.label;$("inFrom").value=p.label;
-    if(S.drop)startBooking(); else {show("search");S.active="to";$("inTo").value="";$("inTo").focus();}
+    S.pickup=p; $("pickupText").textContent=p.label; $("inFrom").value=p.label;
   }else{
-    S.drop=p;saveRecent(p);$("inTo").value=p.label;startBooking();
+    S.drop=p; saveRecent(p); $("inTo").value=p.label;
   }
+  if(S.pickup&&S.drop)startBooking();
+  else if(S.drop){show("search");S.active="from";$("inFrom").focus();}
+  else {show("search");S.active="to";$("inTo").focus();}
 };
 
-// ================= PRICING (traffic + weather + festival, all hidden) =================
-const V=[
-  {id:"bike", name:"Bike",        short:"Bike",  icon:"two_wheeler",       seats:1,eta:3,base:20,perKm:8, perMin:.5},
-  {id:"auto", name:"Auto",        short:"Auto",  icon:"electric_rickshaw", seats:3,eta:4,base:25,perKm:10,perMin:.8},
-  {id:"eco",  name:"Cab Economy", short:"Cab",   icon:"local_taxi",        seats:4,eta:5,base:30,perKm:12,perMin:1},
-  {id:"sedan",name:"Car Sedan",   short:"Sedan", icon:"directions_car",    seats:4,eta:6,base:40,perKm:14,perMin:1.2},
-  {id:"suv",  name:"Car SUV",     short:"SUV",   icon:"airport_shuttle",   seats:6,eta:7,base:55,perKm:18,perMin:1.5}
+// ================= VEHICLE CATALOG & PRICING =================
+// Bike: 7-10 Rs/km
+// Auto: 7-13 Rs/km
+// Car Economy: 8-15 Rs/km
+// Sedan: 10-18 Rs/km
+// SUV: 13-22 Rs/km
+const V = [
+  {id:"bike", name:"Bike Pooling", short:"Bike", icon:"🏍️", min:7, max:10, cap:1, desc:"1 seat · Solo commuter"},
+  {id:"auto", name:"Auto Rickshaw", short:"Auto", icon:"🛺", min:7, max:13, cap:3, desc:"3 seats · Shared per passenger"},
+  {id:"eco",  name:"Car Economy",  short:"Economy", icon:"🚗", min:8, max:15, cap:4, desc:"4 seats · Compact AC"},
+  {id:"sedan",name:"Car Sedan",    short:"Sedan", icon:"🚘", min:10, max:18, cap:4, desc:"4 seats · Premium legroom"},
+  {id:"suv",  name:"Car SUV",      short:"SUV", icon:"🚙", min:13, max:22, cap:6, desc:"6 seats · Family capacity"}
 ];
-const FESTIVALS=["01-14","03-14","08-15","10-20","11-08","12-25"]; // MM-DD – edit as needed
-async function computeSurge(lat,lng){
-  let s=1;
-  try{
-    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=precipitation`);
-    const j=await r.json();
-    if((j.current&&j.current.precipitation)>.1)s*=1.2;     // rain (hidden)
-  }catch(e){}
-  const d=new Date(),k=String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-  if(FESTIVALS.includes(k))s*=1.3;                           // festival (hidden)
-  return s;
+
+function fare(v, d){
+  const dist = Math.max(1, d);
+  const mid = (v.min + v.max) / 2;
+  return Math.round(mid * dist);
 }
-function trafficFactor(){                                    // traffic estimate (hidden)
-  const d=new Date(), h=d.getHours()+d.getMinutes()/60, wd=d.getDay()>0&&d.getDay()<6;
-  if(wd&&((h>=8&&h<11)||(h>=17&&h<21))) return 1.3;
-  if(!wd&&h>=17&&h<22) return 1.15;
-  if(wd&&h>=11&&h<17) return 1.05;
-  return 1;
-}
-const fare=v=>Math.round((v.base+v.perKm*S.dist+v.perMin*S.dur)*S.surge);
 
 function renderVehicles(){
-  $("vList").innerHTML=V.map(v=>`
-    <div class="vrow ${v.id===S.vehicle?"on":""}" data-v="${v.id}">
-      <div class="ic"><span class="material-icons">${v.icon}</span></div>
-      <div class="mid"><div class="vn">${v.name}</div>
-        <div class="sub">${v.eta} min away • ${S.route?"Drop in ~"+Math.round(v.eta+S.dur)+" mins":"Drop in --"} • <span class="material-icons" style="font-size:13px;vertical-align:-2px">person</span>${v.seats} Seats</div></div>
-      <div class="pr">${S.route?"₹"+fare(v):"…"}</div>
-    </div>`).join("");
-  document.querySelectorAll(".vrow").forEach(el=>el.onclick=()=>{S.vehicle=el.dataset.v;renderVehicles();});
-  const v=V.find(x=>x.id===S.vehicle);
-  $("goBtn").textContent=S.mode==="passenger"?"Book "+v.short:"Find passengers · "+v.short;
+  const d = S.dist || 3;
+  $("vList").innerHTML = V.map(v=>{
+    const price = fare(v, d);
+    const on = v.id === S.vehicle ? "on" : "";
+    return `<div class="vrow ${on}" data-v="${v.id}">
+      <div class="vico">${v.icon}</div>
+      <div>
+        <div class="vname">${v.name}</div>
+        <div class="vsub">${v.desc} · ${v.cap} seats</div>
+      </div>
+      <div class="vpr">₹${price}
+        <small>₹${v.min}-${v.max}/km</small>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.querySelectorAll(".vrow").forEach(el=>{
+    el.onclick=()=>{ S.vehicle=el.dataset.v; renderVehicles(); };
+  });
+
+  const curV = V.find(x=>x.id===S.vehicle);
+  $("goBtn").textContent = S.mode==="passenger" ? `Book ${curV.short} · ₹${fare(curV, d)}` : `Offer ${curV.short} Pool`;
 }
 
-// ================= BOOKING / ROUTE =================
-function clearRoute(){
+function quickSelectVehicle(vid){
+  S.vehicle = vid;
+  switchNav("ride");
+  if(S.pickup && S.drop) startBooking();
+  else openSearch("to");
+}
+
+// ================= BOOKING & ROUTE DRAWING =================
+async function startBooking(){
+  show("book");
+  $("vehicleView").style.display="block";
+  $("matchView").style.display="none";
+  renderVehicles();
+
+  const a=S.pickup, b=S.drop;
+  if(!a||!b)return;
+
   if(routeLine){map.removeLayer(routeLine);routeLine=null;}
   Object.values(markers).forEach(m=>map.removeLayer(m)); markers={};
-  stopAll(); S.route=null;
-}
-async function startBooking(){
-  clearRoute(); show("book");
-  $("vehicleView").style.display="block"; $("matchView").style.display="none";
-  const tok=++bookTok, a=S.pickup, b=S.drop;
-  renderVehicles(); refreshOpts();
-  markers.a=L.marker([a.lat,a.lng],{icon:L.divIcon({className:"",html:'<div class="mk"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
-  markers.b=L.marker([b.lat,b.lng],{icon:L.divIcon({className:"",html:'<span class="material-icons" style="color:#e53935;font-size:40px;display:block;line-height:40px">place</span>',iconSize:[40,40],iconAnchor:[20,38]})}).addTo(map);
-  muteUntil=Date.now()+800;
-  map.fitBounds([[a.lat,a.lng],[b.lat,b.lng]],{paddingTopLeft:[50,90],paddingBottomRight:[50,$("bookSheet").offsetHeight+30],animate:false});
 
-  let coords,dist,dur;
+  markers.p = L.circleMarker([a.lat,a.lng],{radius:8,color:"#34D399",fillColor:"#34D399",fillOpacity:1}).addTo(map);
+  markers.d = L.circleMarker([b.lat,b.lng],{radius:8,color:"#F97316",fillColor:"#F97316",fillOpacity:1}).addTo(map);
+
+  const tok=++bookTok;
   try{
     const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`);
-    const j=await r.json(); const rt=j.routes[0];
-    coords=rt.geometry.coordinates.map(c=>[c[1],c[0]]); dist=rt.distance/1000; dur=rt.duration/60;
+    const j=await r.json();
+    if(tok!==bookTok)return;
+    if(j.routes&&j.routes[0]){
+      const route=j.routes[0];
+      S.route=route.geometry.coordinates.map(c=>[c[1],c[0]]);
+      S.dist=route.distance/1000;
+      S.dur=Math.round(route.duration/60);
+      routeLine=L.polyline(S.route,{color:"#8B5CF6",weight:5,opacity:0.85}).addTo(map);
+      map.fitBounds(routeLine.getBounds(),{padding:[60,60]});
+      renderVehicles();
+      $("travelActiveText").innerHTML = `<b>${short(a.label,2)}</b> ➔ <b>${short(b.label,2)}</b><br>${S.dist.toFixed(1)} km · ~${S.dur} mins`;
+    }
   }catch(e){
-    dist=km(a,b)*1.3; dur=dist/25*60; coords=[[a.lat,a.lng],[b.lat,b.lng]];
+    S.dist=km(a,b);
+    renderVehicles();
   }
-  if(tok!==bookTok)return;
-  const surge=await computeSurge(a.lat,a.lng);
-  if(tok!==bookTok)return;
-  S.route=coords; S.dist=dist; S.dur=dur*trafficFactor(); S.surge=surge;
-  routeLine=L.polyline(coords,{color:"#d0d0d0",weight:5}).addTo(map);   // route line only, no corridor
-  muteUntil=Date.now()+800;
-  map.fitBounds(routeLine.getBounds(),{paddingTopLeft:[50,90],paddingBottomRight:[50,$("bookSheet").offsetHeight+30],animate:false});
-  renderVehicles();
 }
-$("bookBack").onclick=()=>{clearRoute();openSearch("to");};
 
-// ================= MODES + OPTIONS =================
-function setMode(m){
-  S.mode=m;
-  $("mPass").classList.toggle("on",m==="passenger");
-  $("mRider").classList.toggle("on",m==="rider");
+$("bookBack").onclick=()=>{
+  stopAll();
+  show("home");
+  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  Object.values(markers).forEach(m=>map.removeLayer(m)); markers={};
+  if(S.pickup)goTo(S.pickup.lat,S.pickup.lng,15);
+};
+
+// ================= RIDER VERIFICATION & MODAL =================
+function isRiderVerified(){
+  return localStorage.getItem("rider_verified") === "true";
 }
+
+function openRiderDocsModal(){
+  $("riderDocsModal").style.display="flex";
+}
+function closeRiderDocsModal(){
+  $("riderDocsModal").style.display="none";
+}
+
+function markUploaded(cardId, input){
+  if(input.files && input.files[0]){
+    const card = $(cardId);
+    card.classList.add("uploaded");
+    const name = input.files[0].name;
+    card.querySelector("div").textContent = "✓ " + name.slice(0, 22);
+  }
+}
+
+function submitRiderVerification(){
+  const dl = $("docDlNum").value.trim();
+  const rc = $("docRcNum").value.trim();
+  const aadh = $("docAadhaarNum").value.trim();
+  
+  if(!dl || !rc){
+    alert("Please enter your Driving Licence and Vehicle RC numbers.");
+    return;
+  }
+  
+  localStorage.setItem("rider_verified", "true");
+  localStorage.setItem("rider_dl", dl);
+  localStorage.setItem("rider_rc", rc);
+  localStorage.setItem("rider_aadhaar", aadh);
+  
+  updateProfileBadges();
+  closeRiderDocsModal();
+  setMode("rider");
+  alert("🎉 Rider Verification Approved! You can now offer rides and accept passengers.");
+}
+
+function updateProfileBadges(){
+  const verified = isRiderVerified();
+  const badge = $("profRiderStatusBadge");
+  const btn = $("profDocsBtn");
+  const summary = $("profDocsSummary");
+  
+  if(verified){
+    badge.className = "status-pill verified";
+    badge.innerHTML = "✓ Verified Rider Partner";
+    btn.textContent = "View Verified Credentials";
+    const dl = localStorage.getItem("rider_dl")||"DL Active";
+    const rc = localStorage.getItem("rider_rc")||"RC Verified";
+    summary.textContent = `Credentials: ${dl} · Vehicle: ${rc}`;
+  }else{
+    badge.className = "status-pill unverified";
+    badge.innerHTML = "⚠️ Rider Unverified";
+    btn.textContent = "Upload Rider Documents";
+    summary.textContent = "Documents required before you can accept ride passengers.";
+  }
+}
+
+// ================= MODES (Passenger vs Rider) =================
+function setMode(m){
+  if(m==="rider" && !isRiderVerified()){
+    openRiderDocsModal();
+    return;
+  }
+  S.mode=m;
+  $("mPass").classList.toggle("tab-active",m==="passenger");
+  $("mRider").classList.toggle("tab-active",m==="rider");
+  $("femWrap").style.display=(S.mode==="passenger"&&$("myGender").value==="female")?"inline-flex":"none";
+  if(S.stage==="book")renderVehicles();
+}
+
 $("mPass").onclick=()=>setMode("passenger");
 $("mRider").onclick=()=>setMode("rider");
-function refreshOpts(){
-  $("femWrap").style.display=(S.mode==="passenger"&&$("myGender").value==="female")?"inline":"none";
-  renderVehicles();
-}
-$("myGender").onchange=refreshOpts;
+$("myGender").onchange=()=>setMode(S.mode);
 
-// ================= REAL MATCHING (server) =================
-const CID=(()=>{try{let c=sessionStorage.getItem("cid");if(!c){c="u"+Math.random().toString(36).slice(2,10);sessionStorage.setItem("cid",c)}return c}catch(e){return "u"+Math.random().toString(36).slice(2,10)}})();
-function myName(){
-  let n=null; try{n=sessionStorage.getItem("nm")}catch(e){}
-  if(!n){n=prompt("Your name?")||"User"; try{sessionStorage.setItem("nm",n)}catch(e){}}
-  return n;
+// ================= BOTTOM NAVIGATION SWITCHER =================
+function switchNav(screen){
+  document.querySelectorAll(".nav-item").forEach(it=>it.classList.remove("active"));
+  const navBtn = $("nav" + screen.charAt(0).toUpperCase() + screen.slice(1));
+  if(navBtn) navBtn.classList.add("active");
+
+  if(screen==="ride"){
+    show(S.pickup && S.drop ? "book" : "home");
+  }else if(screen==="services"){
+    show("screenServices");
+  }else if(screen==="travel"){
+    show("screenTravel");
+  }else if(screen==="profile"){
+    updateProfileBadges();
+    show("screenProfile");
+  }
 }
+
+function saveProfileChanges(){
+  const name = $("profNameInput").value.trim()||"Tharun Kumar";
+  localStorage.setItem("user_name", name);
+  $("profNameDisplay").textContent = name;
+  $("profAvatar").textContent = name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+  $("myGender").value = $("profGenderInput").value;
+  alert("Profile saved successfully!");
+}
+
+// ================= SERVER MATCHING & TRACKING =================
 const api=(p,body)=>fetch("/api/"+p,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:undefined).then(r=>r.json());
-const FORCE_SIM=location.search.includes("sim");   // open /?sim=1 to simulate movement along the route
-let poll=null, watchId=null, sim=null, sharing=false, listed=false, partnerMarkers={};
-const thin=r=>{const s=Math.ceil(r.length/200);return r.filter((_,i)=>i%s===0||i===r.length-1);};
+let poll=null, watchId=null, listed=false, sharing=false;
+let partnerMarkers={};
+
+const myName=()=>(localStorage.getItem("user_name")||$("profNameInput").value||"User").trim();
 
 $("goBtn").onclick=async()=>{
   if(!S.route)return;
-  stopAll();
+  $("vehicleView").style.display="none";
+  $("matchView").style.display="block";
+  $("results").innerHTML='<div style="padding:20px;text-align:center;color:#94a3b8"><span class="material-icons" style="font-size:36px;animation:spin 1.5s linear infinite">sync</span><br>Finding matches along your route…</div>';
+
   const me=$("myGender").value;
+  const thin=r=>{const s=Math.ceil(r.length/200);return r.filter((_,i)=>i%s===0||i===r.length-1);};
   await api("listing",{clientId:CID,name:myName(),role:S.mode,gender:me,vehicle:S.vehicle,
     femaleOnly:S.mode==="passenger"&&me==="female"&&$("femaleOnly").checked,
-    pickup:{lat:S.pickup.lat,lng:S.pickup.lng},drop:{lat:S.drop.lat,lng:S.drop.lng},route:thin(S.route)});
+    pickup:S.pickup,drop:S.drop,route:thin(S.route)});
   listed=true;
-  $("vehicleView").style.display="none"; $("matchView").style.display="block";
+
   $("matchTitle").textContent=S.mode==="passenger"?"Riders on your route":"Passengers on your route";
-  $("results").innerHTML='<div class="card">Looking for matches on your route…</div>';
-  refreshMatches(); poll=setInterval(refreshMatches,3000);
+  refreshMatches();
+  if(!poll)poll=setInterval(refreshMatches,3000);
+  startLocationSharing();
 };
 
 async function refreshMatches(){
   try{
     const [m,ib,rd]=await Promise.all([api("matches?clientId="+CID),api("inbox?clientId="+CID),api("ride?clientId="+CID)]);
-    let h="";
-    if(rd.partners.length){
-      h+=`<div class="card"><div class="live">Ride confirmed · live location shared with ${rd.partners.map(p=>esc(p.name)).join(", ")}</div></div>`;
-      shareLocation(); drawPartners(rd.partners);
-    }
-    if(S.mode==="rider"){
-      h+=ib.requests.map(r=>`<div class="card"><b>${esc(r.passengerName)}</b> · ${r.passengerGender} wants to ride with you
-        <div><button onclick="respond(${r.id},true)">Accept passenger</button>
-        <button style="background:#333;color:#fff" onclick="respond(${r.id},false)">Decline</button></div></div>`).join("");
-      const open=m.matches.filter(x=>x.status!=="accepted").length;
-      h+=`<div class="card">${open} passenger(s) on your route${open?"":" · waiting for passengers"}.</div>`;
-    }else{
-      h+=m.matches.map(x=>{
-        const occ=x.vehicle==="bike"?"Bike · no other passengers":(x.inside.length?`Already inside: ${x.inside.length} (${x.inside.join(", ")})`:"Vehicle empty");
-        const btn=x.status==="accepted"?"Accepted":x.status==="pending"?"Waiting for rider…":x.status==="rejected"?"Declined":"Request ride";
-        const dis=x.status?" disabled":"";
-        return `<div class="card"><b>${esc(x.name)}</b> · ${x.gender}<br>Same route · ${V.find(v=>v.id===x.vehicle).short}<br>${occ}
-          <div><button${dis} onclick="sendReq('${x.id}')">${btn}</button></div></div>`;
-      }).join("");
-    }
-    $("results").innerHTML=h||'<div class="card">No matches on your route yet. Keep this screen open.</div>';
+    renderMatches(m.matches||[],ib.requests||[],rd.partners||[]);
   }catch(e){}
 }
+
+function renderMatches(list,inbox,partners){
+  let h="";
+  if(inbox.length){
+    h+='<h4 style="color:var(--accent);margin-bottom:8px">Incoming Requests</h4>';
+    inbox.forEach(r=>{
+      h+=`<div class="card"><b>${esc(r.passengerName)}</b> · ${r.passengerGender} wants to join your ride<br>
+        <button onclick="respond(${r.id},true)" style="background:var(--pickup);color:#000">Accept</button>
+        <button onclick="respond(${r.id},false)" style="background:rgba(255,255,255,0.1);margin-left:6px">Decline</button></div>`;
+    });
+  }
+  if(partners.length){
+    h+=`<div style="color:var(--pickup);font-weight:700;margin:10px 0">✓ Live Sharing Active (${partners.length} partner)</div>`;
+  }
+  if(!list.length && !inbox.length){
+    h+='<div style="padding:16px;text-align:center;color:#94a3b8">Searching for pooling partners along your route…</div>';
+  }else{
+    list.forEach(x=>{
+      const occ=x.vehicle==="bike"?"Bike · 1 seat":(x.inside.length?`Passengers inside: ${x.inside.length} (${x.inside.join(", ")})`:"Vehicle empty");
+      const btn=x.status==="accepted"?"Accepted":x.status==="pending"?"Waiting for rider…":x.status==="rejected"?"Declined":"Request ride";
+      h+=`<div class="card"><b>${esc(x.name)}</b> · ${x.gender}<br>Vehicle: ${V.find(v=>v.id===x.vehicle)?.name||x.vehicle}<br>${occ}
+        <br><button ${x.status?"disabled":""} onclick="sendReq('${x.id}')">${btn}</button></div>`;
+    });
+  }
+  $("results").innerHTML=h;
+  updatePartnerMarkers(partners);
+}
+
+function updatePartnerMarkers(partners){
+  const live=new Set(partners.map(p=>p.id));
+  Object.keys(partnerMarkers).forEach(id=>{if(!live.has(id)){map.removeLayer(partnerMarkers[id]);delete partnerMarkers[id];}});
+  partners.forEach(p=>{
+    if(!p.loc)return;
+    if(!partnerMarkers[p.id]){
+      partnerMarkers[p.id]=L.marker([p.loc.lat,p.loc.lng],{
+        icon:L.divIcon({className:"",html:`<div style="background:var(--accent);color:#000;font-weight:800;font-size:11px;padding:3px 8px;border-radius:12px;box-shadow:0 0 10px rgba(6,182,212,0.8)">🚗 ${esc(p.name)}</div>`})
+      }).addTo(map);
+    }else partnerMarkers[p.id].setLatLng([p.loc.lat,p.loc.lng]);
+  });
+}
+
 async function sendReq(id){await api("request",{clientId:CID,targetId:id});refreshMatches();}
 async function respond(id,ok){await api("respond",{clientId:CID,requestId:id,accept:ok});refreshMatches();}
 
-function shareLocation(){
+function startLocationSharing(){
   if(sharing)return; sharing=true;
   const send=(lat,lng)=>api("location",{clientId:CID,lat,lng});
-  if(FORCE_SIM||!navigator.geolocation)return simulate(send);
-  watchId=navigator.geolocation.watchPosition(p=>send(p.coords.latitude,p.coords.longitude),()=>simulate(send),{enableHighAccuracy:true});
+  if(navigator.geolocation){
+    watchId=navigator.geolocation.watchPosition(
+      p=>send(p.coords.latitude,p.coords.longitude),
+      ()=>{}, {enableHighAccuracy:true,maximumAge:2000});
+  }
 }
-function simulate(send){
-  if(sim||!S.route)return;
-  let i=0; const step=Math.max(1,Math.floor(S.route.length/60));
-  sim=setInterval(()=>{i=Math.min(i+step,S.route.length-1);send(S.route[i][0],S.route[i][1]);},2000);
-}
-function drawPartners(ps){
-  ps.forEach(p=>{
-    if(!p.loc)return;
-    if(!partnerMarkers[p.id])partnerMarkers[p.id]=L.circleMarker([p.loc.lat,p.loc.lng],{radius:9,color:"#fff",weight:3,fillColor:"#1a73e8",fillOpacity:1}).addTo(map);
-    else partnerMarkers[p.id].setLatLng([p.loc.lat,p.loc.lng]);
-  });
-}
+
 function stopAll(){
-  if(poll){clearInterval(poll);poll=null}
-  if(sim){clearInterval(sim);sim=null}
-  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  if(poll){clearInterval(poll);poll=null;}
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
   Object.values(partnerMarkers).forEach(m=>map.removeLayer(m)); partnerMarkers={};
   sharing=false;
   if(listed){listed=false;api("cancel",{clientId:CID}).catch(()=>{});}
 }
+
 $("matchBack").onclick=()=>{stopAll();$("matchView").style.display="none";$("vehicleView").style.display="block";};
 window.addEventListener("pagehide",()=>{try{navigator.sendBeacon("/api/cancel",new Blob([JSON.stringify({clientId:CID})],{type:"application/json"}))}catch(e){}});
 
-// ================= START =================
-show("home"); renderRecents(); setMode("passenger");
+// ================= INITIALIZE =================
+show("home");
+renderRecents();
+setMode("passenger");
+updateProfileBadges();
 locate();
 </script>
 </body>
