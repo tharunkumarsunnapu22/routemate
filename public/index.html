@@ -12,7 +12,7 @@
   --primary: #8B5CF6;
   --accent: #06B6D4;
   --grad: linear-gradient(135deg, #8B5CF6, #06B6D4);
-  --glass: rgba(20, 20, 35, 0.75);
+  --glass: rgba(20, 20, 35, 0.78);
   --glass-border: rgba(255, 255, 255, 0.14);
   --text: #F5F3FF;
   --pickup: #34D399;
@@ -22,7 +22,7 @@
 *{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
 #map{position:absolute;inset:0;background:#141423}
-.leaflet-control-attribution{font-size:9px!important;background:rgba(10,10,20,0.8)!important;color:#aaa!important;border-radius:6px;padding:2px 6px;margin:8px 8px 70px!important}
+.leaflet-control-attribution{font-size:9px!important;background:rgba(10,10,20,0.8)!important;color:#aaa!important;border-radius:6px;padding:2px 6px;margin:8px 8px 74px!important}
 .leaflet-control-attribution a{color:#06B6D4!important;text-decoration:none}
 
 /* Map layer switcher */
@@ -201,7 +201,7 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
 }
 
 /* Modals */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);z-index:3000;display:none;align-items:flex-end;justify-content:center}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:3000;display:none;align-items:flex-end;justify-content:center}
 .modal-content{background:var(--glass);backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--glass-border);border-radius:28px 28px 0 0;width:100%;max-width:520px;max-height:86vh;overflow-y:auto;padding:20px;color:var(--text);box-shadow:0 -10px 40px rgba(139,92,246,0.3);animation:sheetUp .4s ease}
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .modal-header h3{font-size:20px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
@@ -210,22 +210,53 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
 /* Form inputs */
 .form-group{margin-bottom:14px}
 .form-label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#cbd5e1}
-.form-input{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;outline:none}
+.form-input{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;outline:none;font-weight:600}
 .form-input:focus{border-color:var(--accent);box-shadow:0 0 10px rgba(6,182,212,0.4)}
-.upload-card{border:1.5px dashed rgba(255,255,255,0.2);border-radius:16px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s;background:rgba(255,255,255,0.02)}
+.upload-card{border:1.5px dashed rgba(255,255,255,0.2);border-radius:16px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s;background:rgba(255,255,255,0.02);display:block}
 .upload-card:hover{border-color:var(--primary);background:rgba(139,92,246,0.08)}
 .upload-card.uploaded{border-color:var(--pickup);border-style:solid;background:rgba(52,211,153,0.1)}
 .upload-card input{display:none}
 
-/* Service catalog cards */
-.service-card{background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px;margin-bottom:12px;display:flex;gap:14px;align-items:center;cursor:pointer;transition:transform .2s,background .2s}
-.service-card:hover{transform:translateY(-2px);background:rgba(255,255,255,0.07)}
+/* Ride history cards */
+.history-card{background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
+.history-card:hover{transform:translateY(-2px);border-color:rgba(139,92,246,0.4)}
+.history-card .h-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.history-card .h-route{display:flex;flex-direction:column;gap:6px;margin:8px 0;font-size:14px}
+.history-card .h-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#94a3b8}
 
-/* Profile */
-.profile-avatar{width:76px;height:76px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff;margin:0 auto 12px;box-shadow:0 0 24px rgba(139,92,246,0.6)}
+/* Profile components */
+.profile-avatar{width:80px;height:80px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff;margin:0 auto 12px;box-shadow:0 0 26px rgba(139,92,246,0.6)}
 .status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;margin-top:6px}
 .status-pill.verified{background:rgba(52,211,153,0.15);color:var(--pickup);border:1px solid var(--pickup)}
 .status-pill.unverified{background:rgba(251,113,133,0.15);color:var(--safety);border:1px solid var(--safety)}
+
+.logout-btn{
+  width:100%;padding:13px;border:1px solid rgba(251,113,133,0.4);border-radius:16px;
+  background: rgba(251,113,133,0.1);
+  color: var(--safety);
+  font-size:15px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  cursor:pointer;transition:all .2s;margin-top:18px;
+}
+.logout-btn:hover{background:rgba(251,113,133,0.2);box-shadow:0 0 16px rgba(251,113,133,0.4)}
+
+/* Full screen Login & Onboarding */
+#loginScreen{
+  position:fixed;inset:0;z-index:9000;background:#0d0d17;display:none;
+  padding:24px 20px 40px;overflow-y:auto;align-items:center;justify-content:center;
+}
+.login-card{
+  width:100%;max-width:440px;margin:auto;background:var(--glass);
+  backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--glass-border);
+  border-radius:28px;padding:28px 22px;box-shadow:0 10px 40px rgba(0,0,0,0.6);
+  animation:sheetUp .5s ease;
+}
+.brand-badge{
+  width:58px;height:58px;border-radius:18px;background:var(--grad);
+  display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;
+  box-shadow:0 0 24px rgba(139,92,246,0.6);
+}
+.otp-display{background:rgba(6,182,212,0.12);border:1px dashed var(--accent);color:var(--accent);padding:8px 14px;border-radius:12px;font-size:13px;font-weight:700;margin:10px 0;text-align:center}
 
 /* Match cards */
 .card{border:1px solid var(--glass-border);border-radius:18px;padding:14px;margin-top:10px;font-size:13px;background:rgba(255,255,255,0.04)}
@@ -319,82 +350,46 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
   </div>
 </div>
 
-<!-- 5. SERVICES SCREEN -->
-<div id="screenServices" class="screen full">
+<!-- 5. PAST RIDE HISTORY SCREEN (Replaces old Services logo) -->
+<div id="screenHistory" class="screen full">
   <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
-  <h2 style="font-size:22px;font-weight:800;margin:64px 0 6px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">All RouteMate Services</h2>
-  <p style="color:#94a3b8;font-size:13px;margin-bottom:20px">Peer-to-peer verified ride sharing at direct split rates</p>
-  
-  <div class="service-card" onclick="quickSelectVehicle('bike')">
-    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(139,92,246,0.15);display:flex;align-items:center;justify-content:center">🏍️</div>
-    <div style="flex:1">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b style="font-size:16px">Bike Pooling</b>
-        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹7 - ₹10/km</span>
-      </div>
-      <p style="font-size:12px;color:#94a3b8;margin-top:2px">1 passenger · Fastest traffic bypass · Helmet provided</p>
+  <h2 style="font-size:22px;font-weight:800;margin:64px 0 4px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Past Ride History</h2>
+  <p style="color:#94a3b8;font-size:13px;margin-bottom:18px">Complete record of your shared trips & pooling transactions</p>
+
+  <!-- Summary stats -->
+  <div style="display:flex;gap:10px;margin-bottom:18px">
+    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:18px;padding:12px;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--accent)" id="statTripsCount">3</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Total Rides</div>
+    </div>
+    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:18px;padding:12px;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--pickup)" id="statTotalKm">22.2 km</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Distance</div>
+    </div>
+    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:18px;padding:12px;text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--primary)" id="statCo2Saved">4.2 kg</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">CO₂ Saved</div>
     </div>
   </div>
 
-  <div class="service-card" onclick="quickSelectVehicle('auto')">
-    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(6,182,212,0.15);display:flex;align-items:center;justify-content:center">🛺</div>
-    <div style="flex:1">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b style="font-size:16px">Auto Rickshaw</b>
-        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹7 - ₹13/km</span>
-      </div>
-      <p style="font-size:12px;color:#94a3b8;margin-top:2px">Up to 3 passengers · Split per individual seat</p>
-    </div>
-  </div>
-
-  <div class="service-card" onclick="quickSelectVehicle('eco')">
-    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(52,211,153,0.15);display:flex;align-items:center;justify-content:center">🚗</div>
-    <div style="flex:1">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b style="font-size:16px">Economy Car</b>
-        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹8 - ₹15/km</span>
-      </div>
-      <p style="font-size:12px;color:#94a3b8;margin-top:2px">Hatchbacks & compacts · AC comfort · 4 passengers</p>
-    </div>
-  </div>
-
-  <div class="service-card" onclick="quickSelectVehicle('sedan')">
-    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(249,115,22,0.15);display:flex;align-items:center;justify-content:center">🚘</div>
-    <div style="flex:1">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b style="font-size:16px">Sedan Prime</b>
-        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹10 - ₹18/km</span>
-      </div>
-      <p style="font-size:12px;color:#94a3b8;margin-top:2px">Spacious legroom & boot space · Top-rated riders</p>
-    </div>
-  </div>
-
-  <div class="service-card" onclick="quickSelectVehicle('suv')">
-    <div style="font-size:36px;width:54px;height:54px;border-radius:16px;background:rgba(236,72,153,0.15);display:flex;align-items:center;justify-content:center">🚙</div>
-    <div style="flex:1">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b style="font-size:16px">XL SUV</b>
-        <span style="color:var(--pickup);font-weight:800;font-size:15px">₹13 - ₹22/km</span>
-      </div>
-      <p style="font-size:12px;color:#94a3b8;margin-top:2px">6 passenger capacity · Family & luggage ready</p>
-    </div>
-  </div>
+  <!-- History list container -->
+  <div id="historyListContainer"></div>
 </div>
 
 <!-- 6. ACTIVITY / TRAVEL SCREEN -->
 <div id="screenTravel" class="screen full">
   <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
-  <h2 style="font-size:22px;font-weight:800;margin:64px 0 6px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Activity & Trips</h2>
-  <p style="color:#94a3b8;font-size:13px;margin-bottom:20px">Your live pooling rides and travel history</p>
+  <h2 style="font-size:22px;font-weight:800;margin:64px 0 6px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Live Activity</h2>
+  <p style="color:#94a3b8;font-size:13px;margin-bottom:20px">Your live pooling rides and travel route status</p>
   
-  <div class="service-card" style="border-color:var(--accent)">
+  <div class="service-card" style="border-color:var(--accent);background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px;display:flex;gap:14px;align-items:center">
     <div style="font-size:30px">📍</div>
     <div style="flex:1">
       <div style="display:flex;justify-content:space-between;align-items:center">
         <b style="font-size:15px">Current Route Status</b>
         <span style="color:var(--accent);font-weight:700;font-size:12px">ACTIVE SESSION</span>
       </div>
-      <div id="travelActiveText" style="font-size:13px;color:#cbd5e1;margin-top:4px">No active route selected. Set pickup and drop to start.</div>
+      <div id="travelActiveText" style="font-size:13px;color:#cbd5e1;margin-top:4px">No active route selected. Set pickup and drop on map to start.</div>
     </div>
   </div>
 
@@ -413,27 +408,34 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
   </div>
 </div>
 
-<!-- 7. PROFILE SCREEN -->
+<!-- 7. PROFILE SCREEN WITH LOGOUT -->
 <div id="screenProfile" class="screen full">
   <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
   <div style="margin-top:64px;text-align:center">
     <div class="profile-avatar" id="profAvatar">TK</div>
     <h2 style="font-size:20px;font-weight:800" id="profNameDisplay">Tharun Kumar</h2>
+    <div style="font-size:13px;color:var(--accent);margin-top:2px" id="profPhoneDisplay">+91 98765 43210</div>
     <div id="profRiderStatusBadge" class="status-pill unverified">⚠️ Rider Unverified</div>
   </div>
 
-  <div style="margin-top:24px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px">
+  <div style="margin-top:20px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px">
     <h3 style="font-size:15px;margin-bottom:14px;color:var(--accent)">User Information</h3>
     <div class="form-group">
       <label class="form-label">Display Name</label>
       <input class="form-input" id="profNameInput" value="Tharun Kumar">
     </div>
-    <div class="form-group">
-      <label class="form-label">Gender</label>
-      <select class="form-input" id="profGenderInput">
-        <option value="male">Male</option>
-        <option value="female">Female</option>
-      </select>
+    <div style="display:flex;gap:10px">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Gender</label>
+        <select class="form-input" id="profGenderInput">
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
+      <div class="form-group" style="width:100px">
+        <label class="form-label">Age</label>
+        <input type="number" class="form-input" id="profAgeInput" value="23">
+      </div>
     </div>
     <button class="book-btn" onclick="saveProfileChanges()" style="padding:10px;font-size:14px">Save Profile</button>
   </div>
@@ -443,12 +445,18 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
     <p style="font-size:12px;color:#94a3b8;margin-bottom:12px" id="profDocsSummary">Documents required before you can accept ride passengers.</p>
     <button class="book-btn" onclick="openRiderDocsModal()" id="profDocsBtn" style="padding:10px;font-size:14px">Upload Rider Documents</button>
   </div>
+
+  <!-- Logout Button -->
+  <button class="logout-btn" onclick="logoutUser()">
+    <span class="material-icons">logout</span>
+    Log Out of RouteMate
+  </button>
 </div>
 
-<!-- PERSISTENT BOTTOM NAVIGATION BAR -->
+<!-- PERSISTENT BOTTOM NAVIGATION BAR (Services replaced by History) -->
 <div class="bottom-nav-bar" id="bottomNav">
   <div class="nav-item active" id="navRide" onclick="switchNav('ride')"><span class="material-icons">navigation</span>Ride</div>
-  <div class="nav-item" id="navServices" onclick="switchNav('services')"><span class="material-icons">electric_moped</span>Services</div>
+  <div class="nav-item" id="navHistory" onclick="switchNav('history')"><span class="material-icons">history</span>History</div>
   <div class="nav-item" id="navTravel" onclick="switchNav('travel')"><span class="material-icons">route</span>Activity</div>
   <div class="nav-item" id="navProfile" onclick="switchNav('profile')"><span class="material-icons">account_circle</span>Profile</div>
 </div>
@@ -468,7 +476,7 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
       <label class="upload-card" id="cardDl">
         <input type="file" onchange="markUploaded('cardDl', this)">
         <span class="material-icons" style="color:var(--primary);font-size:26px">badge</span>
-        <div style="font-size:13px;font-weight:600;margin-top:4px" id="txtDl">Upload Licence (Front & Back)</div>
+        <div style="font-size:13px;font-weight:600;margin-top:4px">Upload Licence (Front & Back)</div>
       </label>
     </div>
 
@@ -478,7 +486,7 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
       <label class="upload-card" id="cardRc">
         <input type="file" onchange="markUploaded('cardRc', this)">
         <span class="material-icons" style="color:var(--accent);font-size:26px">directions_car</span>
-        <div style="font-size:13px;font-weight:600;margin-top:4px" id="txtRc">Upload Vehicle RC (Front & Back)</div>
+        <div style="font-size:13px;font-weight:600;margin-top:4px">Upload Vehicle RC (Front & Back)</div>
       </label>
     </div>
 
@@ -488,7 +496,7 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
       <label class="upload-card" id="cardAadhaar">
         <input type="file" onchange="markUploaded('cardAadhaar', this)">
         <span class="material-icons" style="color:var(--pickup);font-size:26px">fingerprint</span>
-        <div style="font-size:13px;font-weight:600;margin-top:4px" id="txtAadhaar">Upload Aadhaar Card</div>
+        <div style="font-size:13px;font-weight:600;margin-top:4px">Upload Aadhaar Card</div>
       </label>
     </div>
 
@@ -497,7 +505,7 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
       <label class="upload-card" id="cardInsurance">
         <input type="file" onchange="markUploaded('cardInsurance', this)">
         <span class="material-icons" style="color:var(--safety);font-size:26px">verified_user</span>
-        <div style="font-size:13px;font-weight:600;margin-top:4px" id="txtInsurance">Upload Valid Insurance Policy</div>
+        <div style="font-size:13px;font-weight:600;margin-top:4px">Upload Valid Insurance Policy</div>
       </label>
     </div>
 
@@ -510,8 +518,343 @@ html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
   </div>
 </div>
 
+<!-- FULL SCREEN LOGIN & OTP ONBOARDING OVERLAY -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="brand-badge">🚗</div>
+    
+    <!-- STEP 1: ENTER MOBILE NUMBER -->
+    <div id="stepPhone">
+      <h2 style="font-size:22px;font-weight:800;text-align:center;margin-bottom:6px">Welcome to RouteMate</h2>
+      <p style="font-size:13px;color:#94a3b8;text-align:center;margin-bottom:20px">Enter your mobile number to get an instant OTP</p>
+      
+      <div class="form-group">
+        <label class="form-label">Mobile Number</label>
+        <div style="display:flex;gap:8px">
+          <div style="padding:12px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);border-radius:14px;font-weight:700;color:var(--accent)">+91</div>
+          <input type="tel" class="form-input" id="loginPhoneInput" placeholder="Enter 10-digit number" maxlength="10" value="9876543210" style="flex:1">
+        </div>
+      </div>
+
+      <div style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:8px 12px;font-size:12px;color:#c4b5fd;margin:12px 0">
+        💡 <b>Existing Demo Account:</b> Number <b>9876543210</b> contains preloaded ride history. Or enter any new number to create a fresh profile!
+      </div>
+
+      <button class="book-btn" onclick="handleSendOtp()">Get OTP</button>
+    </div>
+
+    <!-- STEP 2: VERIFY OTP -->
+    <div id="stepOtp" style="display:none">
+      <h2 style="font-size:22px;font-weight:800;text-align:center;margin-bottom:6px">Verify Mobile</h2>
+      <p style="font-size:13px;color:#94a3b8;text-align:center;margin-bottom:12px" id="otpPhoneNotice">Enter 4-digit OTP sent to your number</p>
+
+      <div class="otp-display" id="otpDemoBanner">🔑 Your Demo OTP is: <b>1234</b></div>
+
+      <div class="form-group">
+        <label class="form-label" style="text-align:center">4-Digit OTP</label>
+        <input type="text" class="form-input" id="loginOtpInput" placeholder="1234" maxlength="4" style="text-align:center;font-size:24px;letter-spacing:10px;font-weight:800">
+      </div>
+
+      <button class="book-btn" onclick="handleVerifyOtp()">Verify OTP & Log In</button>
+      <div style="text-align:center;margin-top:12px">
+        <button onclick="backToPhoneStep()" style="background:none;border:0;color:#94a3b8;font-size:13px;cursor:pointer">Change mobile number</button>
+      </div>
+    </div>
+
+    <!-- STEP 3: NEW USER REGISTRATION -->
+    <div id="stepRegister" style="display:none">
+      <h2 style="font-size:22px;font-weight:800;text-align:center;margin-bottom:6px">Complete Profile</h2>
+      <p style="font-size:13px;color:#94a3b8;text-align:center;margin-bottom:18px">First time logging in! Set up your passenger details:</p>
+
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input class="form-input" id="regNameInput" placeholder="e.g. Ramesh Varma">
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <div class="form-group" style="flex:1">
+          <label class="form-label">Gender</label>
+          <select class="form-input" id="regGenderInput">
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div class="form-group" style="width:110px">
+          <label class="form-label">Age</label>
+          <input type="number" class="form-input" id="regAgeInput" placeholder="22" min="18" max="90" value="22">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Emergency Contact Phone</label>
+        <input type="tel" class="form-input" id="regEmergencyInput" placeholder="Family / Emergency contact">
+      </div>
+
+      <button class="book-btn" onclick="handleCompleteRegistration()">Start Ride Pooling</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+// ================= USER DATABASE & SEED DATA =================
+function getUsersDb(){
+  try{ return JSON.parse(localStorage.getItem("routemate_users") || "{}"); }
+  catch(e){ return {}; }
+}
+function saveUsersDb(db){
+  try{ localStorage.setItem("routemate_users", JSON.stringify(db)); }
+  catch(e){}
+}
+
+function initSeedUsers(){
+  const db = getUsersDb();
+  if(!db["9876543210"]){
+    db["9876543210"] = {
+      phone: "9876543210",
+      name: "Tharun Kumar",
+      gender: "male",
+      age: 23,
+      riderVerified: true,
+      riderDl: "AP07 20230008472",
+      riderRc: "AP 16 BK 5522",
+      rides: [
+        {
+          id: "RM-9481",
+          date: "Yesterday, 6:30 PM",
+          from: "Bhavani Puram, Vijayawada",
+          to: "Kanaka Durga Temple, Ghat Road",
+          vehicle: "Bike Pooling",
+          icon: "🏍️",
+          fare: "₹38",
+          distance: "4.8 km",
+          status: "Completed",
+          role: "Passenger"
+        },
+        {
+          id: "RM-8204",
+          date: "10 Oct 2026, 9:15 AM",
+          from: "Benz Circle, MG Road",
+          to: "Vijayawada Railway Station",
+          vehicle: "Auto Rickshaw",
+          icon: "🛺",
+          fare: "₹45",
+          distance: "3.2 km",
+          status: "Completed",
+          role: "Passenger"
+        },
+        {
+          id: "RM-7119",
+          date: "08 Oct 2026, 7:45 PM",
+          from: "PVP Square Mall",
+          to: "Gannavaram Airport Road",
+          vehicle: "Car Sedan",
+          icon: "🚘",
+          fare: "₹185",
+          distance: "14.2 km",
+          status: "Completed",
+          role: "Rider"
+        }
+      ]
+    };
+    saveUsersDb(db);
+  }
+}
+initSeedUsers();
+
+// Current active session
+function getCurrentUser(){
+  const phone = localStorage.getItem("current_user_phone");
+  if(!phone) return null;
+  const db = getUsersDb();
+  return db[phone] || null;
+}
+
+// ================= AUTH FLOW (PHONE + OTP + PROFILE) =================
+let pendingPhone = "";
+let generatedOtp = "1234";
+
+function checkAuthStatus(){
+  const user = getCurrentUser();
+  if(!user){
+    $("loginScreen").style.display = "flex";
+    showLoginStep("stepPhone");
+  }else{
+    $("loginScreen").style.display = "none";
+    loadUserProfile(user);
+    renderHistoryScreen();
+  }
+}
+
+function showLoginStep(stepId){
+  $("stepPhone").style.display = stepId === "stepPhone" ? "block" : "none";
+  $("stepOtp").style.display = stepId === "stepOtp" ? "block" : "none";
+  $("stepRegister").style.display = stepId === "stepRegister" ? "block" : "none";
+}
+
+function handleSendOtp(){
+  const raw = $("loginPhoneInput").value.trim();
+  if(!raw || raw.length < 10){
+    alert("Please enter a valid 10-digit mobile number.");
+    return;
+  }
+  pendingPhone = raw;
+  generatedOtp = "1234"; // Demo OTP
+  $("otpPhoneNotice").textContent = `Enter 4-digit OTP sent to +91 ${pendingPhone}`;
+  $("otpDemoBanner").innerHTML = `🔑 Your Demo OTP is: <b>${generatedOtp}</b>`;
+  $("loginOtpInput").value = "";
+  showLoginStep("stepOtp");
+  $("loginOtpInput").focus();
+}
+
+function backToPhoneStep(){
+  showLoginStep("stepPhone");
+}
+
+function handleVerifyOtp(){
+  const entered = $("loginOtpInput").value.trim();
+  if(entered !== generatedOtp && entered !== "1234"){
+    alert("Invalid OTP! Please enter 1234.");
+    return;
+  }
+  
+  const db = getUsersDb();
+  if(db[pendingPhone]){
+    // Existing user! Restore session and past ride history!
+    localStorage.setItem("current_user_phone", pendingPhone);
+    $("loginScreen").style.display = "none";
+    loadUserProfile(db[pendingPhone]);
+    renderHistoryScreen();
+    alert(`Welcome back, ${db[pendingPhone].name}! Your past ride history is ready.`);
+  }else{
+    // New user! Go to complete profile step
+    showLoginStep("stepRegister");
+    $("regNameInput").focus();
+  }
+}
+
+function handleCompleteRegistration(){
+  const name = $("regNameInput").value.trim();
+  const gender = $("regGenderInput").value;
+  const age = parseInt($regAgeInput = $("regAgeInput").value) || 22;
+  const emergency = $("regEmergencyInput").value.trim();
+
+  if(!name){
+    alert("Please enter your name.");
+    return;
+  }
+
+  const db = getUsersDb();
+  db[pendingPhone] = {
+    phone: pendingPhone,
+    name: name,
+    gender: gender,
+    age: age,
+    emergency: emergency,
+    riderVerified: false,
+    rides: []
+  };
+  saveUsersDb(db);
+
+  localStorage.setItem("current_user_phone", pendingPhone);
+  $("loginScreen").style.display = "none";
+  loadUserProfile(db[pendingPhone]);
+  renderHistoryScreen();
+  alert(`Welcome to RouteMate, ${name}!`);
+}
+
+function logoutUser(){
+  if(confirm("Are you sure you want to log out of RouteMate?")){
+    localStorage.removeItem("current_user_phone");
+    $("loginPhoneInput").value = "";
+    $("loginOtpInput").value = "";
+    checkAuthStatus();
+  }
+}
+
+function loadUserProfile(user){
+  $("profNameDisplay").textContent = user.name;
+  $("profPhoneDisplay").textContent = "+91 " + user.phone;
+  $("profAvatar").textContent = user.name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+  $("profNameInput").value = user.name;
+  $("profGenderInput").value = user.gender;
+  $("profAgeInput").value = user.age || 22;
+  $("myGender").value = user.gender;
+
+  updateProfileBadges();
+}
+
+function saveProfileChanges(){
+  const user = getCurrentUser();
+  if(!user) return;
+  const db = getUsersDb();
+  user.name = $("profNameInput").value.trim() || user.name;
+  user.gender = $("profGenderInput").value;
+  user.age = parseInt($("profAgeInput").value) || user.age;
+  db[user.phone] = user;
+  saveUsersDb(db);
+  loadUserProfile(user);
+  alert("Profile saved successfully!");
+}
+
+// ================= RIDE HISTORY RENDERER =================
+function renderHistoryScreen(){
+  const user = getCurrentUser();
+  const rides = (user && user.rides) ? user.rides : [];
+  
+  $("statTripsCount").textContent = rides.length;
+  let totalKm = 0;
+  rides.forEach(r => {
+    const kmNum = parseFloat(r.distance) || 0;
+    totalKm += kmNum;
+  });
+  $("statTotalKm").textContent = totalKm.toFixed(1) + " km";
+  $("statCo2Saved").textContent = (totalKm * 0.18).toFixed(1) + " kg";
+
+  const container = $("historyListContainer");
+  if(!rides.length){
+    container.innerHTML = `<div style="text-align:center;padding:40px 16px;color:#94a3b8">
+      <span class="material-icons" style="font-size:48px;color:#475569">history_toggle_off</span>
+      <div style="font-size:16px;font-weight:700;margin-top:10px;color:#fff">No Past Rides Yet</div>
+      <div style="font-size:13px;margin-top:4px">When you book and complete rides, your ride history with fares will appear here.</div>
+      <button class="book-btn" onclick="switchNav('ride')" style="max-width:200px;margin:20px auto 0;font-size:14px;padding:10px">Book First Ride</button>
+    </div>`;
+    return;
+  }
+
+  container.innerHTML = rides.map(r => `
+    <div class="history-card">
+      <div class="h-top">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:24px">${r.icon}</span>
+          <div>
+            <b style="font-size:15px">${r.vehicle}</b>
+            <div style="font-size:11px;color:#94a3b8">${r.date} · ID: ${r.id}</div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <b style="font-size:16px;color:var(--pickup)">${r.fare}</b>
+          <div style="font-size:11px;color:var(--accent);font-weight:700">${r.distance}</div>
+        </div>
+      </div>
+      <div class="h-route">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="dotG" style="width:10px;height:10px"></span>
+          <span style="font-size:13px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.from}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="dotO" style="width:10px;height:10px"></span>
+          <span style="font-size:13px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.to}</span>
+        </div>
+      </div>
+      <div class="h-bottom">
+        <span>Role: <b style="color:#fff">${r.role}</b></span>
+        <span style="color:var(--pickup);font-weight:700">✓ ${r.status}</span>
+      </div>
+    </div>
+  `).join("");
+}
+
 // ================= BASICS & CONFIG =================
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -575,7 +918,7 @@ function goTo(lat,lng,z){
 // ================= SCREENS =================
 function show(stage,target){
   S.stage=stage; if(target)S.target=target;
-  ["home","search","pick","book","screenServices","screenTravel","screenProfile"].forEach(s=>{
+  ["home","search","pick","book","screenHistory","screenTravel","screenProfile"].forEach(s=>{
     if($(s)) $(s).style.display = s === stage ? "block" : "none";
   });
   $("pin").style.display=(stage==="home"||stage==="pick")?"block":"none";
@@ -649,6 +992,13 @@ async function searchPlaces(q){
           return {lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0],label:sub?`${name}, ${sub}`:name};
         });
       }
+    }
+  }catch(e){}
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=in&q=${encodeURIComponent(q)}`);
+    if(r.ok){
+      const j=await r.json();
+      if(j&&j.length)return j.map(x=>({lat:+x.lat,lng:+x.lon,label:short(x.display_name,4)}));
     }
   }catch(e){}
   return [];
@@ -821,13 +1171,6 @@ function renderVehicles(){
   $("goBtn").textContent = S.mode==="passenger" ? `Book ${curV.short} · ₹${fare(curV, d)}` : `Offer ${curV.short} Pool`;
 }
 
-function quickSelectVehicle(vid){
-  S.vehicle = vid;
-  switchNav("ride");
-  if(S.pickup && S.drop) startBooking();
-  else openSearch("to");
-}
-
 // ================= BOOKING & ROUTE DRAWING =================
 async function startBooking(){
   show("book");
@@ -875,7 +1218,8 @@ $("bookBack").onclick=()=>{
 
 // ================= RIDER VERIFICATION & MODAL =================
 function isRiderVerified(){
-  return localStorage.getItem("rider_verified") === "true";
+  const user = getCurrentUser();
+  return user && user.riderVerified;
 }
 
 function openRiderDocsModal(){
@@ -904,12 +1248,18 @@ function submitRiderVerification(){
     return;
   }
   
-  localStorage.setItem("rider_verified", "true");
-  localStorage.setItem("rider_dl", dl);
-  localStorage.setItem("rider_rc", rc);
-  localStorage.setItem("rider_aadhaar", aadh);
+  const user = getCurrentUser();
+  if(user){
+    const db = getUsersDb();
+    user.riderVerified = true;
+    user.riderDl = dl;
+    user.riderRc = rc;
+    user.riderAadhaar = aadh;
+    db[user.phone] = user;
+    saveUsersDb(db);
+    updateProfileBadges();
+  }
   
-  updateProfileBadges();
   closeRiderDocsModal();
   setMode("rider");
   alert("🎉 Rider Verification Approved! You can now offer rides and accept passengers.");
@@ -920,13 +1270,14 @@ function updateProfileBadges(){
   const badge = $("profRiderStatusBadge");
   const btn = $("profDocsBtn");
   const summary = $("profDocsSummary");
+  const user = getCurrentUser();
   
   if(verified){
     badge.className = "status-pill verified";
     badge.innerHTML = "✓ Verified Rider Partner";
     btn.textContent = "View Verified Credentials";
-    const dl = localStorage.getItem("rider_dl")||"DL Active";
-    const rc = localStorage.getItem("rider_rc")||"RC Verified";
+    const dl = (user && user.riderDl) ? user.riderDl : "DL Active";
+    const rc = (user && user.riderRc) ? user.riderRc : "RC Verified";
     summary.textContent = `Credentials: ${dl} · Vehicle: ${rc}`;
   }else{
     badge.className = "status-pill unverified";
@@ -961,23 +1312,44 @@ function switchNav(screen){
 
   if(screen==="ride"){
     show(S.pickup && S.drop ? "book" : "home");
-  }else if(screen==="services"){
-    show("screenServices");
+  }else if(screen==="history"){
+    renderHistoryScreen();
+    show("screenHistory");
   }else if(screen==="travel"){
     show("screenTravel");
   }else if(screen==="profile"){
-    updateProfileBadges();
+    const user = getCurrentUser();
+    if(user) loadUserProfile(user);
     show("screenProfile");
   }
 }
 
-function saveProfileChanges(){
-  const name = $("profNameInput").value.trim()||"Tharun Kumar";
-  localStorage.setItem("user_name", name);
-  $("profNameDisplay").textContent = name;
-  $("profAvatar").textContent = name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
-  $("myGender").value = $("profGenderInput").value;
-  alert("Profile saved successfully!");
+// ================= RECORD NEW RIDE TO HISTORY =================
+function recordCompletedRide(curV, d, fareAmount){
+  const user = getCurrentUser();
+  if(!user) return;
+  const db = getUsersDb();
+  if(!user.rides) user.rides = [];
+  
+  const now = new Date();
+  const timeStr = "Today, " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+  const newRide = {
+    id: "RM-" + Math.floor(1000 + Math.random() * 9000),
+    date: timeStr,
+    from: S.pickup ? short(S.pickup.label, 2) : "Pickup Point",
+    to: S.drop ? short(S.drop.label, 2) : "Drop Point",
+    vehicle: curV ? curV.name : "Pooled Ride",
+    icon: curV ? curV.icon : "🚗",
+    fare: "₹" + fareAmount,
+    distance: d.toFixed(1) + " km",
+    status: "Completed",
+    role: S.mode === "rider" ? "Rider" : "Passenger"
+  };
+  
+  user.rides.unshift(newRide);
+  db[user.phone] = user;
+  saveUsersDb(db);
+  renderHistoryScreen();
 }
 
 // ================= SERVER MATCHING & TRACKING =================
@@ -985,13 +1357,21 @@ const api=(p,body)=>fetch("/api/"+p,body?{method:"POST",headers:{"Content-Type":
 let poll=null, watchId=null, listed=false, sharing=false;
 let partnerMarkers={};
 
-const myName=()=>(localStorage.getItem("user_name")||$("profNameInput").value||"User").trim();
+const myName=()=>{
+  const user = getCurrentUser();
+  return (user ? user.name : "User").trim();
+};
 
 $("goBtn").onclick=async()=>{
   if(!S.route)return;
   $("vehicleView").style.display="none";
   $("matchView").style.display="block";
   $("results").innerHTML='<div style="padding:20px;text-align:center;color:#94a3b8"><span class="material-icons" style="font-size:36px;animation:spin 1.5s linear infinite">sync</span><br>Finding matches along your route…</div>';
+
+  const curV = V.find(x=>x.id===S.vehicle);
+  const cost = fare(curV, S.dist || 3);
+  // Record this trip into user past history!
+  recordCompletedRide(curV, S.dist || 3, cost);
 
   const me=$("myGender").value;
   const thin=r=>{const s=Math.ceil(r.length/200);return r.filter((_,i)=>i%s===0||i===r.length-1);};
@@ -1081,7 +1461,7 @@ window.addEventListener("pagehide",()=>{try{navigator.sendBeacon("/api/cancel",n
 show("home");
 renderRecents();
 setMode("passenger");
-updateProfileBadges();
+checkAuthStatus();
 locate();
 </script>
 </body>
