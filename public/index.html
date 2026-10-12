@@ -3,1005 +3,692 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>RouteMate - Smart Peer Ride Pooling</title>
+<title>RouteMate · Ride Sharing</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root {
-  --primary: #8B5CF6;
-  --accent: #06B6D4;
-  --grad: linear-gradient(135deg, #8B5CF6, #06B6D4);
-  --glass: rgba(20, 20, 35, 0.78);
-  --glass-border: rgba(255, 255, 255, 0.14);
-  --text: #F5F3FF;
+  --primary: #9333EA;
+  --primary-light: #C084FC;
+  --accent: #FB7185;
+  --accent-deep: #E11D48;
+  --grad: linear-gradient(135deg, #9333EA 0%, #E11D48 55%, #FB7185 100%);
+  --grad-subtle: linear-gradient(135deg, rgba(147, 51, 234, 0.22), rgba(251, 113, 133, 0.16));
+  --glass: rgba(22, 10, 34, 0.78);
+  --glass-card: rgba(36, 16, 52, 0.65);
+  --glass-border: rgba(251, 113, 133, 0.22);
+  --glass-border-focus: rgba(251, 113, 133, 0.55);
+  --text: #FDF2F4;
+  --text-muted: #CBD5E1;
   --pickup: #34D399;
+  --drop: #FB7185;
   --safety: #FB7185;
 }
 
-*{box-sizing:border-box;margin:0;padding:0;font-family:'Plus Jakarta Sans',system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;overflow:hidden;background:#0d0d17;color:var(--text)}
-#map{position:absolute;inset:0;background:#141423}
-.leaflet-control-attribution{font-size:9px!important;background:rgba(10,10,20,0.8)!important;color:#aaa!important;border-radius:6px;padding:2px 6px;margin:8px 8px 74px!important}
-.leaflet-control-attribution a{color:#06B6D4!important;text-decoration:none}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+.material-icons{font-family:'Material Icons'!important;font-weight:normal;font-style:normal;font-size:24px;line-height:1;display:inline-block;white-space:nowrap;word-wrap:normal;direction:ltr;-webkit-font-feature-settings:'liga';-webkit-font-smoothing:antialiased}
+html,body{height:100%;overflow:hidden;background:#0b0413;color:var(--text)}
 
-/* Map layer switcher */
-.map-layer-selector{position:absolute;top:16px;right:max(16px,calc(50% - 244px));z-index:999;display:flex;gap:6px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--glass-border);border-radius:999px;padding:4px;box-shadow:0 8px 32px rgba(0,0,0,0.4)}
-.map-layer-btn{border:0;background:none;color:#aaa;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;transition:all .25s ease;display:flex;align-items:center;gap:4px}
-.map-layer-btn.active{background:var(--grad);color:#fff;box-shadow:0 0 12px rgba(139,92,246,0.6)}
+#map{position:absolute;inset:0;background:#12061c}
+.leaflet-tile-pane{filter:invert(1) hue-rotate(220deg) brightness(.88) contrast(1.1)}
+.leaflet-control-attribution{font-size:9px!important;background:rgba(18,8,28,0.85)!important;color:#cbd5e1!important}
+.leaflet-control-attribution a{color:#fb7185!important}
 
-/* Screen containers */
 .screen{position:absolute;inset:0;z-index:1000;display:none;pointer-events:none}
 .screen>*{pointer-events:auto}
-.full{background:#0d0d17;pointer-events:auto;padding:16px max(16px,calc(50% - 244px)) 90px;overflow-y:auto}
-
-.back{position:absolute;top:16px;left:max(16px,calc(50% - 244px));width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);color:#fff;display:flex;align-items:center;justify-content:center;z-index:1050;cursor:pointer;transition:transform .2s;box-shadow:0 4px 16px rgba(0,0,0,0.3)}
-.back:active{transform:scale(0.92)}
-
-.locate{position:absolute;bottom:calc(66vh + 16px);right:max(16px,calc(50% - 244px));width:46px;height:46px;border-radius:50%;background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);display:flex;align-items:center;justify-content:center;color:var(--accent);cursor:pointer;z-index:999;box-shadow:0 6px 20px rgba(0,0,0,0.4);transition:transform .2s}
-.locate:active{transform:scale(0.92)}
-
-/* Glass bottom sheet */
-.bottom-sheet{
-  background: var(--glass);
-  backdrop-filter: blur(22px) saturate(160%);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
-  border: 1px solid var(--glass-border);
-  border-radius: 28px 28px 0 0;
-  box-shadow: 0 -10px 40px rgba(139, 92, 246, 0.25);
-  color: var(--text);
-  animation: sheetUp 0.6s cubic-bezier(.2, .8, .2, 1);
-  position:absolute;left:50%;transform:translateX(-50%);width:100%;max-width:520px;bottom:0;padding:12px 18px 76px;max-height:78vh;overflow-y:auto;
-}
-@keyframes sheetUp {
-  from { transform: translate(-50%, 100%); opacity: 0; }
-  to   { transform: translate(-50%, 0);    opacity: 1; }
-}
-.handle{width:42px;height:4px;border-radius:2px;background:rgba(255,255,255,0.25);margin:0 auto 14px}
-
-/* Passenger / Rider toggle */
-.chips{display:flex;gap:8px;margin-bottom:14px;background:rgba(255,255,255,0.06);border-radius:999px;padding:4px}
-.chip{flex:1;padding:10px;border-radius:999px;border:0;background:none;color:#aaa;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.35s ease;display:flex;align-items:center;justify-content:center;gap:6px}
-.tab-active{
-  background: var(--grad);
-  color: #fff;
-  border-radius: 999px;
-  box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
-  transition: all 0.35s ease;
+.full{
+  background: radial-gradient(circle at top right, rgba(251, 113, 133, 0.12), transparent 50%),
+              radial-gradient(circle at bottom left, rgba(147, 51, 234, 0.16), transparent 50%),
+              #0e0517;
+  pointer-events:auto;
+  padding:16px max(16px,calc(50% - 244px));
+  overflow-y:auto;
 }
 
-/* Pickup pill */
-.pill{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:12px 16px;margin-bottom:12px;font-size:14px;cursor:pointer;transition:background .2s}
-.pill:hover{background:rgba(255,255,255,0.09)}
-.pill span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
-.dotG,.dotO{width:16px;height:16px;border-radius:50%;flex:none}
-.dotG{background:var(--pickup);box-shadow:0 0 10px rgba(52,211,153,0.7)}
-.dotO{background:#F97316;box-shadow:0 0 10px rgba(249,115,22,0.7)}
+/* Header & Back Button */
+.back{
+  position:absolute;top:16px;left:max(16px,calc(50% - 244px));
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(28, 12, 42, 0.85);
+  backdrop-filter:blur(14px);
+  border:1px solid var(--glass-border);
+  color:var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  z-index:1005;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,0,0,0.4);
+  transition:all .2s;
+}
+.back:hover{background:rgba(48, 18, 70, 0.9);box-shadow:0 0 16px rgba(251,113,133,0.35)}
 
-/* Search bar with animated glowing border */
-.search-bar{
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background-image: linear-gradient(rgba(20,20,35,.85), rgba(20,20,35,.85)), var(--grad);
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
-  transition: box-shadow .3s, transform .2s;
-  display:flex;align-items:center;gap:12px;padding:14px 18px;font-size:16px;font-weight:700;margin-bottom:8px;cursor:pointer;color:var(--text);
+.locate{
+  position:absolute;top:70px;right:14px;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(26, 10, 38, 0.85);
+  backdrop-filter:blur(16px);
+  border:1px solid var(--glass-border);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--accent);cursor:pointer;
+  box-shadow:0 6px 20px rgba(147, 51, 234, 0.35);
+  transition:all .2s;
 }
-.search-bar:focus-within{box-shadow:0 0 22px rgba(6, 182, 212, 0.55)}
-.search-bar:active{transform:scale(0.99)}
-.search-bar .material-icons{color:var(--accent)}
+.locate:hover{box-shadow:0 0 20px rgba(251, 113, 133, 0.55);transform:scale(1.05)}
 
-/* Pickup pin: pulsing ripple */
-#pin{position:absolute;left:50%;top:38%;transform:translate(-50%,-100%);z-index:900;display:none;pointer-events:none;text-align:center}
-#pin .lab{display:inline-block;background:var(--pickup);color:#0d1813;font-weight:800;padding:6px 14px;border-radius:20px;font-size:13px;box-shadow:0 4px 14px rgba(52,211,153,0.5)}
-#pin .material-icons{display:block;font-size:46px;color:var(--pickup);line-height:46px;position:relative}
-.pickup-pin{position:relative}
-.pickup-pin::after{
-  content: "";
-  position: absolute; inset: -8px;
-  border-radius: 50%;
-  border: 2px solid var(--pickup);
-  animation: ripple 1.8s ease-out infinite;
+/* Purple Glass Bottom Sheet */
+.sheet{
+  position:absolute;left:50%;transform:translateX(-50%);width:100%;max-width:520px;bottom:0;
+  background:var(--glass);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid var(--glass-border);
+  border-bottom:0;
+  border-radius:28px 28px 0 0;
+  padding:12px 18px 0;
+  box-shadow:0 -12px 42px rgba(147, 51, 234, 0.32), 0 -2px 16px rgba(251, 113, 133, 0.2);
+  max-height:80vh;overflow-y:auto;
 }
-@keyframes ripple {
-  from { transform: scale(.6); opacity: .9; }
-  to   { transform: scale(1.8); opacity: 0; }
-}
-#pin.drop .lab{background:#F97316;color:#fff;box-shadow:0 4px 14px rgba(249,115,22,0.5)}
-#pin.drop .material-icons{color:#F97316}
-#pin.drop .pickup-pin::after{border-color:#F97316}
+.handle{width:42px;height:4px;border-radius:2px;background:rgba(251,113,133,0.35);margin:0 auto 14px}
 
-/* Recents & suggestions list items */
-.rc{max-height:22vh;overflow-y:auto;margin:6px 0}
-.place-item{
-  display:flex;gap:12px;padding:12px 10px;margin-bottom:6px;border-bottom:1px solid rgba(255,255,255,0.06);align-items:flex-start;cursor:pointer;border-radius:16px;
-  transition: background .25s, transform .25s;
-  animation: fadeSlide .5s ease both;
+/* Passenger & Rider Chips */
+.chips{display:flex;gap:10px;margin-bottom:12px}
+.chip{
+  flex:1;padding:10px;border-radius:22px;
+  border:1px solid var(--glass-border);
+  background:rgba(36, 16, 52, 0.45);
+  color:var(--text-muted);
+  font-weight:700;font-size:14px;cursor:pointer;
+  transition:all .25s ease;
 }
-.place-item:hover{
-  background: rgba(139, 92, 246, 0.15);
-  transform: translateX(4px);
+.chip.on{
+  background:var(--grad);
+  color:#fff;
+  border-color:transparent;
+  box-shadow:0 0 22px rgba(251, 113, 133, 0.45);
 }
-@keyframes fadeSlide {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { transform: translateY(0); }
+
+.pill{
+  display:flex;align-items:center;gap:10px;
+  background:var(--glass-card);
+  border:1px solid var(--glass-border);
+  border-radius:16px;padding:12px 16px;margin-bottom:10px;
+  font-size:14px;cursor:pointer;
+  transition:all .2s;
 }
-.km{width:48px;font-size:11px;color:#aaa;text-align:center;flex:none;padding-top:2px;font-weight:600}
+.pill:hover{border-color:var(--glass-border-focus);box-shadow:0 0 16px rgba(251,113,133,0.25)}
+.pill span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);font-weight:600}
+
+.dotG,.dotO{width:18px;height:18px;border-radius:50%;flex:none}
+.dotG{background:#12c04f;box-shadow:0 0 0 4px rgba(18,192,79,0.25)}
+.dotO{background:#fb7185;box-shadow:0 0 0 4px rgba(251,113,133,0.25)}
+
+/* Search Bar (Where do you want to go?) */
+.where{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(38, 16, 56, 0.65);
+  border:1.5px solid var(--glass-border);
+  border-bottom:2px solid var(--accent);
+  border-radius:30px;padding:14px 18px;
+  font-size:16px;font-weight:700;margin-bottom:8px;cursor:pointer;
+  box-shadow:0 4px 18px rgba(147, 51, 234, 0.22);
+  transition:all .25s;
+}
+.where:hover{border-color:var(--accent);box-shadow:0 0 22px rgba(251, 113, 133, 0.4)}
+.where .material-icons{color:var(--accent)}
+
+.rc{max-height:22vh;overflow-y:auto}
+.item{
+  display:flex;gap:12px;padding:12px 4px;
+  border-bottom:1px dashed rgba(251,113,133,0.18);
+  align-items:flex-start;cursor:pointer;
+  border-radius:12px;transition:background .2s;
+}
+.item:hover{background:rgba(147, 51, 234, 0.12)}
+.km{width:46px;font-size:12px;color:#cbd5e1;text-align:center;flex:none;padding-top:3px}
 .nm{font-weight:700;font-size:15px;color:var(--text)}
-.ad{color:#94a3b8;font-size:13px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
+.ad{color:#94a3b8;font-size:13px;margin-top:2px}
 
-/* Persistent Bottom Nav Bar */
-.bottom-nav-bar{
-  position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;height:66px;
-  background:rgba(13,13,23,0.95);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+/* Bottom Navigation Bar (Purple Glass + Light Red Shade) */
+.nav{
+  display:flex;
   border-top:1px solid var(--glass-border);
-  display:flex;align-items:center;justify-content:space-around;z-index:1500;padding:0 8px;box-shadow:0 -4px 20px rgba(0,0,0,0.5);
+  margin:10px -18px 0;
+  background:rgba(18, 8, 28, 0.92);
+  backdrop-filter:blur(20px);
+  padding-bottom:env(safe-area-inset-bottom, 8px);
 }
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 0;font-size:11px;color:#94a3b8;cursor:pointer;transition:all .25s;font-weight:600}
-.nav-item.active{color:var(--accent);filter:drop-shadow(0 0 8px var(--accent))}
-.nav-item .material-icons{font-size:24px;margin-bottom:2px}
+.nav div{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  padding:10px 0 8px;font-size:11px;font-weight:600;
+  color:#a78bfa;cursor:pointer;transition:all .2s;
+}
+.nav div:hover{color:#fca5a5}
+.nav div .material-icons{font-size:22px;margin-bottom:2px;transition:transform .2s}
+.nav .on{
+  color:var(--accent)!important;
+  font-weight:800;
+}
+.nav .on .material-icons{
+  transform:translateY(-2px);
+  filter:drop-shadow(0 0 10px rgba(251, 113, 133, 0.85));
+}
 
-/* Book button with shimmer */
-.book-btn{
-  width:100%;padding:14px;border:none;border-radius:16px;
-  background: var(--grad);
-  color: #fff;
-  font-size:16px;font-weight:800;
-  position: relative;
-  overflow: hidden;
-  cursor:pointer;
-  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
-  transition: transform .2s, box-shadow .2s;
-  margin-top:8px;
-}
-.book-btn::before {
-  content: "";
-  position: absolute; top: 0; left: -100%;
-  width: 60%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
-  animation: shimmer 2.5s infinite;
-}
-@keyframes shimmer { to { left: 140%; } }
-.book-btn:active { transform: scale(.96); }
+#pin{position:absolute;left:50%;top:38%;transform:translate(-50%,-100%);z-index:900;display:none;pointer-events:none;text-align:center}
+#pin .lab{display:inline-block;background:#34d399;color:#000;font-weight:800;padding:7px 14px;border-radius:20px;font-size:13px;box-shadow:0 4px 14px rgba(0,0,0,0.5)}
+#pin .material-icons{display:block;font-size:46px;color:#34d399;line-height:46px;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.6))}
+#pin.drop .lab{background:#fb7185;color:#fff}
+#pin.drop .material-icons{color:#fb7185}
 
-/* Search screen inputs */
-.box{border:1px solid var(--glass-border);border-radius:20px;padding:6px 16px;margin:64px 0 16px;background:var(--glass);backdrop-filter:blur(18px)}
+.box{
+  border:1.5px solid var(--glass-border);
+  border-radius:20px;padding:4px 14px;
+  margin:64px 0 14px;
+  background:var(--glass-card);
+  backdrop-filter:blur(20px);
+  box-shadow:0 8px 26px rgba(0,0,0,0.4);
+}
 .row{display:flex;align-items:center;gap:14px;padding:12px 0}
-.row:first-child{border-bottom:1px solid rgba(255,255,255,0.08)}
-.row input{background:none;border:0;color:#fff;font-size:15px;flex:1;outline:none;font-weight:600}
-.row input::placeholder{color:#64748b}
-.btns{display:flex;gap:10px;margin-bottom:16px}
-.btns button{flex:1;padding:11px 14px;border-radius:999px;border:1px solid var(--glass-border);background:var(--glass);color:#fff;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;transition:background .2s}
-.btns button:hover{background:rgba(255,255,255,0.12)}
+.row+.row{border-top:1px solid rgba(251,113,133,0.14)}
+.row input{flex:1;background:none;border:0;outline:0;color:#fff;font-size:15px;min-width:0;font-weight:600}
 
-/* Vehicle selection rows */
-.vrow{display:flex;align-items:center;gap:14px;padding:12px;border:1.5px solid rgba(255,255,255,0.08);border-radius:16px;margin-bottom:8px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,0.03)}
-.vrow.on{border-color:var(--primary);background:rgba(139,92,246,0.15);box-shadow:0 0 16px rgba(139,92,246,0.3)}
-.vrow .vico{width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,0.06);display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
-.vrow .vname{font-weight:700;font-size:15px}
-.vrow .vsub{font-size:12px;color:#94a3b8;margin-top:2px}
-.vrow .vpr{font-weight:800;font-size:16px;color:#fff;margin-left:auto;text-align:right}
-.vrow .vpr small{display:block;font-size:10px;color:var(--accent);font-weight:600}
+.btns{display:flex;gap:10px;margin-bottom:8px}
+.btns button{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px;border-radius:26px;background:rgba(36,16,52,0.55);
+  border:1px solid var(--glass-border);color:#fff;font-size:13px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.btns button:hover{background:rgba(147,51,234,0.25);border-color:var(--accent)}
 
-/* Women safety pill */
-.safety-option {
-  border: 1px solid var(--safety);
-  color: var(--safety);
-  background: rgba(251, 113, 133, 0.1);
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  margin-top:4px;
+.bar{
+  background:var(--glass-card);border:1px solid var(--glass-border);
+  border-radius:14px;padding:14px;font-size:15px;font-weight:600;margin-bottom:6px;
+}
+.hint{color:#cbd5e1;font-size:13px;margin-bottom:10px}
+
+/* Vehicle Rows */
+.vrow{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  border-radius:16px;border:1.5px solid rgba(251,113,133,0.12);
+  margin-bottom:8px;cursor:pointer;
+  background:rgba(32,14,48,0.5);
+  transition:all .2s;
+}
+.vrow:hover{background:rgba(48,18,70,0.65);border-color:rgba(251,113,133,0.3)}
+.vrow.on{
+  border-color:var(--accent);
+  background:rgba(147,51,234,0.22);
+  box-shadow:0 0 20px rgba(251,113,133,0.3);
+}
+.vrow .ic{width:46px;text-align:center}
+.vrow .ic .material-icons{font-size:36px;color:#f472b6}
+.vrow .mid{flex:1}
+.vrow .vn{font-weight:700;font-size:16px;color:var(--text)}
+.vrow .sub{color:#94a3b8;font-size:12px;margin-top:2px}
+.vrow .pr{font-weight:800;font-size:19px;color:#fda4af}
+
+.opts{display:flex;align-items:center;gap:10px;font-size:14px;padding:8px 4px;flex-wrap:wrap}
+.opts select{background:rgba(28,12,42,0.85);color:#fff;border:1px solid var(--glass-border);border-radius:10px;padding:8px 10px;outline:none}
+.seg{display:flex;gap:8px;margin:4px 0 8px}
+.seg button{
+  flex:1;padding:10px;border-radius:12px;
+  border:1px solid var(--glass-border);
+  background:rgba(36,16,52,0.45);color:#fff;font-weight:700;cursor:pointer;
+}
+.seg button.on{
+  border-color:var(--accent);
+  background:rgba(251,113,133,0.2);
+  color:#fecdd3;
+  box-shadow:0 0 14px rgba(251,113,133,0.35);
+}
+.lbl{color:#cbd5e1;font-size:13px;padding:2px 4px}
+
+/* Main Action Buttons (Grad Shimmer) */
+.go{
+  width:100%;padding:15px;border:0;border-radius:30px;
+  background:var(--grad);
+  color:#fff;font-size:17px;font-weight:800;
+  margin:8px 0 16px;cursor:pointer;
+  box-shadow:0 4px 22px rgba(244, 63, 94, 0.45);
+  transition:transform .2s, box-shadow .2s;
+}
+.go:hover{box-shadow:0 0 28px rgba(251, 113, 133, 0.65);transform:scale(1.01)}
+.go:active{transform:scale(0.98)}
+
+.card{
+  background:var(--glass-card);
+  backdrop-filter:blur(16px);
+  border:1px solid var(--glass-border);
+  border-radius:18px;padding:14px 16px;
+  margin-bottom:10px;font-size:14px;line-height:1.55;
+  box-shadow:0 4px 16px rgba(0,0,0,0.3);
+}
+.card button,.btnlink{
+  display:inline-block;margin:8px 6px 0 0;padding:9px 16px;
+  border:0;border-radius:20px;
+  background:var(--grad);
+  color:#fff;font-weight:700;font-size:13px;text-decoration:none;cursor:pointer;
+  box-shadow:0 2px 10px rgba(244,63,94,0.35);
+}
+.card button:disabled{background:#3b1e4e;color:#888;box-shadow:none}
+.dark{background:rgba(40,18,58,0.7)!important;border:1px solid var(--glass-border)!important;color:#fff!important}
+.live{color:#34d399;font-weight:800;display:inline-flex;align-items:center;gap:4px}
+.tag{display:inline-block;background:rgba(251,113,133,0.18);border:1px solid rgba(251,113,133,0.3);border-radius:10px;padding:2px 8px;font-size:11px;margin-left:6px;color:#fecdd3;font-weight:700}
+.mk{width:22px;height:22px;border-radius:50%;background:#34d399;border:4px solid #fff;box-shadow:0 0 12px #34d399}
+
+.inp{
+  width:100%;background:rgba(28,12,42,0.7);
+  border:1.5px solid var(--glass-border);
+  color:#fff;border-radius:14px;padding:14px;
+  font-size:16px;margin-bottom:10px;outline:0;
+  transition:border-color .2s, box-shadow .2s;
+}
+.inp:focus{border-color:var(--accent);box-shadow:0 0 16px rgba(251,113,133,0.35)}
+
+.muted{color:#cbd5e1;font-size:13px;margin-bottom:12px}
+.err{color:#fb7185;font-size:14px;margin:6px 0;min-height:18px;font-weight:600}
+
+.logo{
+  font-size:36px;font-weight:800;
+  background:linear-gradient(135deg, #c084fc, #fb7185);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin:70px 0 6px;
+}
+.link{color:#f472b6;text-align:center;margin-top:10px;cursor:pointer;font-weight:600}
+.banner{
+  background:var(--grad);
+  color:#fff;font-weight:700;border-radius:14px;
+  padding:12px 16px;margin-bottom:12px;cursor:pointer;font-size:14px;
+  box-shadow:0 4px 18px rgba(244, 63, 94, 0.4);
 }
 
-/* Modals */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);z-index:3000;display:none;align-items:flex-end;justify-content:center}
-.modal-content{background:var(--glass);backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--glass-border);border-radius:28px 28px 0 0;width:100%;max-width:520px;max-height:86vh;overflow-y:auto;padding:20px;color:var(--text);box-shadow:0 -10px 40px rgba(139,92,246,0.3);animation:sheetUp .4s ease}
-.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
-.modal-header h3{font-size:20px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.close-btn{background:rgba(255,255,255,0.1);border:0;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer}
-
-/* Form inputs */
-.form-group{margin-bottom:14px}
-.form-label{display:block;font-size:13px;font-weight:700;margin-bottom:6px;color:#cbd5e1}
-.form-input{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);color:#fff;font-size:14px;outline:none;font-weight:600}
-.form-input:focus{border-color:var(--accent);box-shadow:0 0 10px rgba(6,182,212,0.4)}
-.upload-card{border:1.5px dashed rgba(255,255,255,0.2);border-radius:16px;padding:14px;text-align:center;cursor:pointer;transition:border-color .2s;background:rgba(255,255,255,0.02);display:block}
-.upload-card:hover{border-color:var(--primary);background:rgba(139,92,246,0.08)}
-.upload-card.uploaded{border-color:var(--pickup);border-style:solid;background:rgba(52,211,153,0.1)}
-.upload-card input{display:none}
-
-/* Ride history cards */
-.history-card{background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px;margin-bottom:12px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
-.history-card:hover{transform:translateY(-2px);border-color:rgba(139,92,246,0.4)}
-.history-card .h-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.history-card .h-route{display:flex;flex-direction:column;gap:6px;margin:8px 0;font-size:14px}
-.history-card .h-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);font-size:12px;color:#94a3b8}
-
-/* Profile components */
-.profile-avatar{width:80px;height:80px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:#fff;margin:0 auto 12px;box-shadow:0 0 26px rgba(139,92,246,0.6)}
-.status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;margin-top:6px}
-.status-pill.verified{background:rgba(52,211,153,0.15);color:var(--pickup);border:1px solid var(--pickup)}
-.status-pill.unverified{background:rgba(251,113,133,0.15);color:var(--safety);border:1px solid var(--safety)}
-
-.logout-btn{
-  width:100%;padding:13px;border:1px solid rgba(251,113,133,0.4);border-radius:16px;
-  background: rgba(251,113,133,0.1);
-  color: var(--safety);
-  font-size:15px;font-weight:800;
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  cursor:pointer;transition:all .2s;margin-top:18px;
+#bell{
+  position:fixed;top:16px;right:14px;z-index:2000;
+  width:44px;height:44px;border-radius:50%;
+  background:rgba(26,10,38,0.88);border:1px solid var(--glass-border);
+  display:none;align-items:center;justify-content:center;cursor:pointer;
+  color:#fb7185;backdrop-filter:blur(14px);
+  box-shadow:0 4px 14px rgba(0,0,0,0.4);
 }
-.logout-btn:hover{background:rgba(251,113,133,0.2);box-shadow:0 0 16px rgba(251,113,133,0.4)}
+#bell b{position:absolute;top:-4px;right:-4px;background:#f43f5e;color:#fff;border-radius:10px;font-size:11px;padding:1px 6px;display:none}
 
-/* Full screen Login & Onboarding */
-#loginScreen{
-  position:fixed;inset:0;z-index:9000;background:#0d0d17;display:none;
-  padding:24px 20px 40px;overflow-y:auto;align-items:center;justify-content:center;
+#notifPanel{
+  position:fixed;top:68px;right:14px;width:min(340px,calc(100% - 28px));
+  max-height:60vh;overflow:auto;background:rgba(24,10,36,0.96);
+  border:1px solid var(--glass-border);border-radius:16px;z-index:2000;display:none;
+  box-shadow:0 12px 36px rgba(0,0,0,0.6);backdrop-filter:blur(24px);
 }
-.login-card{
-  width:100%;max-width:440px;margin:auto;background:var(--glass);
-  backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--glass-border);
-  border-radius:28px;padding:28px 22px;box-shadow:0 10px 40px rgba(0,0,0,0.6);
-  animation:sheetUp .5s ease;
-}
-.brand-badge{
-  width:58px;height:58px;border-radius:18px;background:var(--grad);
-  display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;
-  box-shadow:0 0 24px rgba(139,92,246,0.6);
-}
-.otp-display{background:rgba(6,182,212,0.12);border:1px dashed var(--accent);color:var(--accent);padding:8px 14px;border-radius:12px;font-size:13px;font-weight:700;margin:10px 0;text-align:center}
+#notifPanel div{padding:12px 14px;border-bottom:1px solid rgba(251,113,133,0.12);font-size:13px;line-height:1.4}
 
-/* Match cards */
-.card{border:1px solid var(--glass-border);border-radius:18px;padding:14px;margin-top:10px;font-size:13px;background:rgba(255,255,255,0.04)}
-.card b{font-size:15px;color:#fff}
-.card button{margin-top:8px;padding:9px 16px;border:0;border-radius:10px;background:var(--grad);color:#fff;font-weight:700;cursor:pointer}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);width:min(420px,calc(100% - 24px));z-index:3000;pointer-events:none}
+#toast div{
+  background:rgba(28,12,42,0.92);
+  border:1px solid var(--accent);
+  border-radius:14px;padding:12px 16px;margin-bottom:6px;
+  font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,0.5);color:#fff;font-weight:600;
+}
+
+.hist{
+  background:var(--glass-card);
+  border:1px solid var(--glass-border);
+  border-radius:18px;padding:14px 16px;
+  margin-bottom:10px;font-size:14px;line-height:1.55;
+  box-shadow:0 4px 16px rgba(0,0,0,0.3);
+  transition:transform .2s;
+}
+.hist:hover{transform:translateY(-2px);border-color:var(--accent)}
+
+h2{
+  margin:64px 0 6px;font-size:24px;font-weight:800;
+  background:linear-gradient(135deg, #c084fc, #fb7185);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
 </style>
 </head>
 <body>
-<div id="map"></div>
 
-<!-- Top map layer selector -->
-<div class="map-layer-selector">
-  <button class="map-layer-btn active" data-layer="satellite">🛰️ Satellite</button>
-  <button class="map-layer-btn" data-layer="terrain">⛰️ Terrain</button>
-  <button class="map-layer-btn" data-layer="streets">🗺️ Streets</button>
-  <button class="map-layer-btn" data-layer="dark">🌙 Dark</button>
+<div id="map"></div>
+<div id="pin"><div class="lab" id="pinLab">Pickup point</div><span class="material-icons">place</span></div>
+<div id="toast"></div>
+<div id="bell"><span class="material-icons">notifications</span><b id="bellN"></b></div>
+<div id="notifPanel"></div>
+
+<!-- 1. LOGIN SCREEN -->
+<div id="login" class="screen full">
+  <div class="logo">RouteMate</div>
+  <p class="muted">Fast, secure ride pooling in your city</p>
+  <div id="stepPhone">
+    <input class="inp" id="phone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number">
+    <button class="go" id="sendOtp">Get OTP</button>
+  </div>
+  <div id="stepOtp" style="display:none">
+    <input class="inp" id="otp" inputmode="numeric" maxlength="6" placeholder="Enter OTP">
+    <div class="muted" id="demoHint"></div>
+    <input class="inp" id="nameIn" placeholder="Your name" style="display:none">
+    <button class="go" id="verifyOtp">Verify &amp; continue</button>
+    <div class="link" id="changeNum">Change number</div>
+  </div>
+  <div class="err" id="loginErr"></div>
 </div>
 
-<!-- Center map pin -->
-<div id="pin"><div class="lab" id="pinLab">Pickup point</div><span class="material-icons pickup-pin">place</span></div>
+<!-- 2. RIDER VERIFICATION -->
+<div id="verify" class="screen full">
+  <div class="back" id="verBack"><span class="material-icons">arrow_back</span></div>
+  <h2>Rider verification</h2>
+  <p class="muted">Needed once for each new number before you can ride as a rider. Upload a clear photo of your document.</p>
+  <select class="inp" id="docType"><option>Driving Licence</option><option>Aadhaar Card</option><option>Voter ID</option></select>
+  <input class="inp" id="docNum" placeholder="Document number">
+  <select class="inp" id="vType">
+    <option value="bike">Bike</option><option value="auto">Auto</option><option value="eco">Cab Economy</option>
+    <option value="sedan">Car Sedan</option><option value="suv">Car SUV</option>
+  </select>
+  <input class="inp" id="vNo" placeholder="Vehicle number (e.g. AP39AB1234)">
+  <input class="inp" id="upiId" placeholder="Your UPI ID to receive payments (optional, e.g. name@upi)">
+  <p class="muted">Document photo</p>
+  <input class="inp" id="docFile" type="file" accept="image/*">
+  <img id="docPrev" style="max-width:100%;border-radius:12px;display:none;margin-bottom:10px">
+  <div class="err" id="verErr"></div>
+  <button class="go" id="verSubmit">Submit for verification</button>
+</div>
 
-<!-- 1. HOME SCREEN (Ride) -->
-<div id="home" class="screen" style="display:block">
-  <div class="locate" id="locBtn" title="Current Location"><span class="material-icons">my_location</span></div>
-  <div class="bottom-sheet">
+<!-- 3. HOME SCREEN -->
+<div id="home" class="screen">
+  <div class="locate" id="locBtn"><span class="material-icons">my_location</span></div>
+  <div class="sheet">
     <div class="handle"></div>
+    <div class="banner" id="banner" style="display:none"></div>
     <div class="chips">
-      <button class="chip tab-active" id="mPass"><span class="material-icons" style="font-size:18px">person</span>Passenger</button>
-      <button class="chip" id="mRider"><span class="material-icons" style="font-size:18px">two_wheeler</span>Rider</button>
+      <button class="chip on" id="mPass">Passenger</button>
+      <button class="chip" id="mRider">Rider</button>
     </div>
     <div class="pill" id="pickupPill"><span class="dotG"></span><span class="t" id="pickupText">Locating…</span></div>
-    <div class="search-bar" id="whereBtn"><span class="material-icons">search</span>Where do you want to go?</div>
+    <div class="where" id="whereBtn"><span class="material-icons">search</span>Where do you want to go?</div>
     <div class="rc" id="homeRecents"></div>
+    
+    <!-- BOTTOM NAV: Ride | Travel History | Travel | Profile -->
+    <div class="nav">
+      <div class="on btnNavRide" id="navRide"><span class="material-icons">navigation</span>Ride</div>
+      <div class="btnNavHistory" id="navHistory"><span class="material-icons">history</span>Travel History</div>
+      <div class="btnNavTravel" id="navTravel"><span class="material-icons">route</span>Travel</div>
+      <div class="btnNavProfile" id="navProfile"><span class="material-icons">person_outline</span>Profile</div>
+    </div>
   </div>
 </div>
 
-<!-- 2. SEARCH SCREEN -->
+<!-- 4. SEARCH SCREEN -->
 <div id="search" class="screen full">
   <div class="back" id="searchBack"><span class="material-icons">arrow_back</span></div>
   <div class="box">
     <div class="row"><span class="dotG"></span><input id="inFrom" placeholder="Pickup location" autocomplete="off"></div>
-    <div class="row"><span class="dotO"></span><input id="inTo" placeholder="Drop location / Temple / Building" autocomplete="off"></div>
+    <div class="row"><span class="dotO"></span><input id="inTo" placeholder="Drop location" autocomplete="off"></div>
   </div>
   <div class="btns">
-    <button id="selMap"><span class="material-icons">place</span>Select on map</button>
+    <button id="selMap"><span class="material-icons">place</span>Select from map</button>
     <button id="curBtn"><span class="material-icons">my_location</span>Current location</button>
   </div>
+  <div class="hint">Type a building, college, theatre, temple, office or area. Tip: add the area, e.g. "PVP Mall Vijayawada".</div>
   <div id="sugg"></div>
 </div>
 
-<!-- 3. PICK ON MAP SCREEN -->
+<!-- 5. CONFIRM LOCATION ON MAP -->
 <div id="pick" class="screen">
   <div class="back" id="pickBack"><span class="material-icons">arrow_back</span></div>
-  <div class="bottom-sheet">
+  <div class="sheet">
     <div class="handle"></div>
-    <div class="pill"><span class="dotG"></span><span class="t" id="pickAddr">Move map to place pin</span></div>
-    <button class="book-btn" id="pickOk">Confirm location</button>
+    <div class="bar" id="pickAddr">Move the map to choose a location</div>
+    <div class="hint">Move the map to fine-tune the exact spot, then confirm.</div>
+    <button class="go" id="pickOk">Confirm location</button>
   </div>
 </div>
 
-<!-- 4. BOOKING / MATCHING SCREEN -->
+<!-- 6. BOOK / MATCHES -->
 <div id="book" class="screen">
   <div class="back" id="bookBack"><span class="material-icons">arrow_back</span></div>
-  <div class="bottom-sheet" id="bookSheet">
+  <div class="sheet" id="bookSheet">
     <div class="handle"></div>
     <div id="vehicleView">
       <div id="vList"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="material-icons" style="color:var(--accent)">person</span>
-          <select id="myGender" style="background:rgba(255,255,255,0.1);border:1px solid var(--glass-border);color:#fff;padding:6px 10px;border-radius:10px;outline:none">
-            <option value="male">Male user</option>
-            <option value="female">Female user</option>
-          </select>
-        </div>
-        <label id="femWrap" class="safety-option" style="display:none;cursor:pointer">
-          <input type="checkbox" id="femaleOnly" style="accent-color:var(--safety)"> Women-Only Pool
-        </label>
+      <div class="opts" id="opts">
+        <span class="material-icons" style="color:var(--accent)">wc</span>
+        <select id="myGender"><option value="male">I am male</option><option value="female">I am female</option></select>
+        <label id="femWrap" style="display:none;color:#fecdd3"><input type="checkbox" id="femaleOnly"> Female rider only</label>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:#94a3b8;padding:4px 0 8px">
-        <span class="material-icons" style="color:var(--pickup);font-size:18px">payments</span> Direct fare split to rider
+      <div id="payWrap">
+        <div class="lbl">Pay the rider by</div>
+        <div class="seg" id="paySeg"><button data-p="cash" class="on">Cash</button><button data-p="upi">UPI</button></div>
       </div>
-      <button class="book-btn" id="goBtn">Book Bike</button>
+      <button class="go" id="goBtn">Find rider</button>
     </div>
     <div id="matchView" style="display:none">
-      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 0 10px" id="matchBack">
-        <span class="material-icons">arrow_back</span><span id="matchTitle" style="font-weight:700">Matches on your route</span>
+      <div class="btns">
+        <button id="matchHome"><span class="material-icons">home</span>Home</button>
+        <button id="matchCancel"><span class="material-icons">close</span>Cancel search</button>
       </div>
       <div id="results"></div>
     </div>
   </div>
 </div>
 
-<!-- 5. PAST RIDE HISTORY SCREEN (Replaces old Services logo) -->
-<div id="screenHistory" class="screen full">
-  <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
-  <h2 style="font-size:22px;font-weight:800;margin:64px 0 4px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Past Ride History</h2>
-  <p style="color:#94a3b8;font-size:13px;margin-bottom:18px">Complete record of your shared trips & pooling transactions</p>
+<!-- 7. PAST HISTORY OF TRAVELS SCREEN -->
+<div id="history" class="screen full">
+  <div class="back" onclick="show('home')"><span class="material-icons">arrow_back</span></div>
+  <h2>Past Travel History</h2>
+  <p class="muted" style="margin-bottom:18px">Complete records of your journeys, trips & fares</p>
 
-  <!-- Summary stats -->
+  <!-- Summary Stats Cards -->
   <div style="display:flex;gap:10px;margin-bottom:18px">
-    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:18px;padding:12px;text-align:center">
-      <div style="font-size:20px;font-weight:800;color:var(--accent)" id="statTripsCount">3</div>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Total Rides</div>
+    <div style="flex:1;background:var(--glass-card);border:1px solid var(--glass-border);border-radius:18px;padding:12px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:var(--accent)" id="histCount">0</div>
+      <div style="font-size:11px;color:#cbd5e1;margin-top:2px">Trips Completed</div>
     </div>
-    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:18px;padding:12px;text-align:center">
-      <div style="font-size:20px;font-weight:800;color:var(--pickup)" id="statTotalKm">22.2 km</div>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">Distance</div>
+    <div style="flex:1;background:var(--glass-card);border:1px solid rgba(147,51,234,0.3);border-radius:18px;padding:12px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:#c084fc" id="histKm">0.0 km</div>
+      <div style="font-size:11px;color:#cbd5e1;margin-top:2px">Distance Covered</div>
     </div>
-    <div style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:18px;padding:12px;text-align:center">
-      <div style="font-size:20px;font-weight:800;color:var(--primary)" id="statCo2Saved">4.2 kg</div>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">CO₂ Saved</div>
-    </div>
-  </div>
-
-  <!-- History list container -->
-  <div id="historyListContainer"></div>
-</div>
-
-<!-- 6. ACTIVITY / TRAVEL SCREEN -->
-<div id="screenTravel" class="screen full">
-  <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
-  <h2 style="font-size:22px;font-weight:800;margin:64px 0 6px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Live Activity</h2>
-  <p style="color:#94a3b8;font-size:13px;margin-bottom:20px">Your live pooling rides and travel route status</p>
-  
-  <div class="service-card" style="border-color:var(--accent);background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px;display:flex;gap:14px;align-items:center">
-    <div style="font-size:30px">📍</div>
-    <div style="flex:1">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <b style="font-size:15px">Current Route Status</b>
-        <span style="color:var(--accent);font-weight:700;font-size:12px">ACTIVE SESSION</span>
-      </div>
-      <div id="travelActiveText" style="font-size:13px;color:#cbd5e1;margin-top:4px">No active route selected. Set pickup and drop on map to start.</div>
+    <div style="flex:1;background:var(--glass-card);border:1px solid rgba(52,211,153,0.3);border-radius:18px;padding:12px;text-align:center">
+      <div style="font-size:22px;font-weight:800;color:#34d399" id="histEco">0.0 kg</div>
+      <div style="font-size:11px;color:#cbd5e1;margin-top:2px">CO₂ Saved</div>
     </div>
   </div>
 
-  <div style="margin-top:20px">
-    <h3 style="font-size:16px;margin-bottom:12px">Safety Features</h3>
-    <div style="background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:18px;padding:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <span class="material-icons" style="color:var(--safety)">shield</span>
-        <div><b>Gender Verification & Safe-Pooling</b><div style="font-size:12px;color:#94a3b8">Both riders & passengers display verified gender for safety</div></div>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px">
-        <span class="material-icons" style="color:var(--pickup)">call</span>
-        <div><b>Emergency Helpline</b><div style="font-size:12px;color:#94a3b8">Police SOS: 112 · Ambulance: 108</div></div>
-      </div>
-    </div>
+  <div id="histList"></div>
+
+  <!-- Shared Bottom Nav -->
+  <div class="nav" style="margin-top:24px">
+    <div class="btnNavRide"><span class="material-icons">navigation</span>Ride</div>
+    <div class="on btnNavHistory"><span class="material-icons">history</span>Travel History</div>
+    <div class="btnNavTravel"><span class="material-icons">route</span>Travel</div>
+    <div class="btnNavProfile"><span class="material-icons">person_outline</span>Profile</div>
   </div>
 </div>
 
-<!-- 7. PROFILE SCREEN WITH LOGOUT -->
-<div id="screenProfile" class="screen full">
-  <div class="back" onclick="switchNav('ride')"><span class="material-icons">arrow_back</span></div>
-  <div style="margin-top:64px;text-align:center">
-    <div class="profile-avatar" id="profAvatar">TK</div>
-    <h2 style="font-size:20px;font-weight:800" id="profNameDisplay">Tharun Kumar</h2>
-    <div style="font-size:13px;color:var(--accent);margin-top:2px" id="profPhoneDisplay">+91 98765 43210</div>
-    <div id="profRiderStatusBadge" class="status-pill unverified">⚠️ Rider Unverified</div>
+<!-- 8. TRAVEL & LIVE ACTIVITY SCREEN -->
+<div id="travel" class="screen full">
+  <div class="back" onclick="show('home')"><span class="material-icons">arrow_back</span></div>
+  <h2>Travel &amp; Live Activity</h2>
+  <p class="muted" style="margin-bottom:18px">Live pooling status, city travel destinations & safety</p>
+
+  <!-- Live Route Status Card -->
+  <div class="card" style="border-color:rgba(251,113,133,0.35);background:linear-gradient(135deg, rgba(38,16,58,0.75), rgba(244,63,94,0.12));padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <b style="font-size:15px;color:#fda4af;display:flex;align-items:center;gap:6px">
+        <span class="material-icons" style="color:var(--accent)">explore</span> Current Travel Status
+      </b>
+      <span id="travelStatusBadge" style="background:rgba(251,113,133,0.2);border:1px solid var(--accent);color:#fecdd3;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:800">STANDBY</span>
+    </div>
+    <div id="travelActiveInfo" style="font-size:13px;color:#e2e8f0;line-height:1.6">
+      No active route selected. Set your pickup and drop point on the map to start your journey.
+    </div>
+    <div id="travelActiveActions" style="margin-top:12px;display:none">
+      <button class="go" style="padding:10px 18px;font-size:13px;margin:0" onclick="openMatchView()">View Active Ride</button>
+    </div>
   </div>
 
-  <div style="margin-top:20px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px">
-    <h3 style="font-size:15px;margin-bottom:14px;color:var(--accent)">User Information</h3>
-    <div class="form-group">
-      <label class="form-label">Display Name</label>
-      <input class="form-input" id="profNameInput" value="Tharun Kumar">
-    </div>
-    <div style="display:flex;gap:10px">
-      <div class="form-group" style="flex:1">
-        <label class="form-label">Gender</label>
-        <select class="form-input" id="profGenderInput">
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-        </select>
+  <!-- Popular City Travel Hotspots -->
+  <h3 style="font-size:16px;font-weight:800;margin:22px 0 10px;color:var(--text)">Popular Travel Destinations</h3>
+  <div id="travelSpotsList" style="display:flex;flex-direction:column;gap:10px"></div>
+
+  <!-- Safety & Emergency Services -->
+  <h3 style="font-size:16px;font-weight:800;margin:24px 0 10px;color:var(--text)">Travel Safety Helpline</h3>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <b style="color:#fecdd3">Police Emergency SOS</b>
+        <div style="font-size:12px;color:#94a3b8">Immediate assistance across Andhra Pradesh</div>
       </div>
-      <div class="form-group" style="width:100px">
-        <label class="form-label">Age</label>
-        <input type="number" class="form-input" id="profAgeInput" value="23">
+      <a href="tel:112" class="btnlink" style="margin:0;padding:8px 14px;background:#f43f5e;color:#fff">Dial 112</a>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid rgba(255,255,255,0.08);padding-top:10px">
+      <div>
+        <b style="color:#fecdd3">Women Safety Helpline</b>
+        <div style="font-size:12px;color:#94a3b8">Disha &amp; 24/7 dedicated women support</div>
       </div>
+      <a href="tel:1091" class="btnlink" style="margin:0;padding:8px 14px;background:var(--grad);color:#fff">Dial 1091</a>
     </div>
-    <button class="book-btn" onclick="saveProfileChanges()" style="padding:10px;font-size:14px">Save Profile</button>
   </div>
 
-  <div style="margin-top:16px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);border-radius:20px;padding:16px">
-    <h3 style="font-size:15px;margin-bottom:8px;color:var(--primary)">Rider Partner Status</h3>
-    <p style="font-size:12px;color:#94a3b8;margin-bottom:12px" id="profDocsSummary">Documents required before you can accept ride passengers.</p>
-    <button class="book-btn" onclick="openRiderDocsModal()" id="profDocsBtn" style="padding:10px;font-size:14px">Upload Rider Documents</button>
-  </div>
-
-  <!-- Logout Button -->
-  <button class="logout-btn" onclick="logoutUser()">
-    <span class="material-icons">logout</span>
-    Log Out of RouteMate
-  </button>
-</div>
-
-<!-- PERSISTENT BOTTOM NAVIGATION BAR (Services replaced by History) -->
-<div class="bottom-nav-bar" id="bottomNav">
-  <div class="nav-item active" id="navRide" onclick="switchNav('ride')"><span class="material-icons">navigation</span>Ride</div>
-  <div class="nav-item" id="navHistory" onclick="switchNav('history')"><span class="material-icons">history</span>History</div>
-  <div class="nav-item" id="navTravel" onclick="switchNav('travel')"><span class="material-icons">route</span>Activity</div>
-  <div class="nav-item" id="navProfile" onclick="switchNav('profile')"><span class="material-icons">account_circle</span>Profile</div>
-</div>
-
-<!-- RIDER DOCUMENTS VERIFICATION MODAL -->
-<div class="modal-overlay" id="riderDocsModal">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h3>Rider Partner Verification</h3>
-      <button class="close-btn" onclick="closeRiderDocsModal()"><span class="material-icons">close</span></button>
-    </div>
-    <p style="font-size:13px;color:#cbd5e1;margin-bottom:16px">Before driving in Rider mode, please upload your mandatory credentials for safety compliance:</p>
-    
-    <div class="form-group">
-      <label class="form-label">1. Driving Licence (DL)</label>
-      <input class="form-input" id="docDlNum" placeholder="Licence Number (e.g., AP07 20230001234)" style="margin-bottom:8px">
-      <label class="upload-card" id="cardDl">
-        <input type="file" onchange="markUploaded('cardDl', this)">
-        <span class="material-icons" style="color:var(--primary);font-size:26px">badge</span>
-        <div style="font-size:13px;font-weight:600;margin-top:4px">Upload Licence (Front & Back)</div>
-      </label>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">2. Vehicle Registration Certificate (RC)</label>
-      <input class="form-input" id="docRcNum" placeholder="Vehicle Plate Number (e.g., AP 16 BK 5522)" style="margin-bottom:8px">
-      <label class="upload-card" id="cardRc">
-        <input type="file" onchange="markUploaded('cardRc', this)">
-        <span class="material-icons" style="color:var(--accent);font-size:26px">directions_car</span>
-        <div style="font-size:13px;font-weight:600;margin-top:4px">Upload Vehicle RC (Front & Back)</div>
-      </label>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">3. Aadhaar Card (Govt ID)</label>
-      <input class="form-input" id="docAadhaarNum" placeholder="12-digit Aadhaar Number" style="margin-bottom:8px">
-      <label class="upload-card" id="cardAadhaar">
-        <input type="file" onchange="markUploaded('cardAadhaar', this)">
-        <span class="material-icons" style="color:var(--pickup);font-size:26px">fingerprint</span>
-        <div style="font-size:13px;font-weight:600;margin-top:4px">Upload Aadhaar Card</div>
-      </label>
-    </div>
-
-    <div class="form-group">
-      <label class="form-label">4. Vehicle Insurance Policy</label>
-      <label class="upload-card" id="cardInsurance">
-        <input type="file" onchange="markUploaded('cardInsurance', this)">
-        <span class="material-icons" style="color:var(--safety);font-size:26px">verified_user</span>
-        <div style="font-size:13px;font-weight:600;margin-top:4px">Upload Valid Insurance Policy</div>
-      </label>
-    </div>
-
-    <div style="display:flex;align-items:flex-start;gap:10px;margin:16px 0">
-      <input type="checkbox" id="docConsent" checked style="accent-color:var(--primary);margin-top:3px">
-      <label for="docConsent" style="font-size:12px;color:#cbd5e1">I certify that all vehicle and identity documents provided are genuine and valid.</label>
-    </div>
-
-    <button class="book-btn" onclick="submitRiderVerification()">Submit & Verify Rider Mode</button>
+  <!-- Shared Bottom Nav -->
+  <div class="nav" style="margin-top:24px">
+    <div class="btnNavRide"><span class="material-icons">navigation</span>Ride</div>
+    <div class="btnNavHistory"><span class="material-icons">history</span>Travel History</div>
+    <div class="on btnNavTravel"><span class="material-icons">route</span>Travel</div>
+    <div class="btnNavProfile"><span class="material-icons">person_outline</span>Profile</div>
   </div>
 </div>
 
-<!-- FULL SCREEN LOGIN & OTP ONBOARDING OVERLAY -->
-<div id="loginScreen">
-  <div class="login-card">
-    <div class="brand-badge">🚗</div>
-    
-    <!-- STEP 1: ENTER MOBILE NUMBER -->
-    <div id="stepPhone">
-      <h2 style="font-size:22px;font-weight:800;text-align:center;margin-bottom:6px">Welcome to RouteMate</h2>
-      <p style="font-size:13px;color:#94a3b8;text-align:center;margin-bottom:20px">Enter your mobile number to get an instant OTP</p>
-      
-      <div class="form-group">
-        <label class="form-label">Mobile Number</label>
-        <div style="display:flex;gap:8px">
-          <div style="padding:12px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.06);border-radius:14px;font-weight:700;color:var(--accent)">+91</div>
-          <input type="tel" class="form-input" id="loginPhoneInput" placeholder="Enter 10-digit number" maxlength="10" value="9876543210" style="flex:1">
-        </div>
-      </div>
+<!-- 9. PROFILE SCREEN -->
+<div id="profile" class="screen full">
+  <div class="back" id="pfBack"><span class="material-icons">arrow_back</span></div>
+  <h2 id="pfName">Profile</h2>
+  <p class="muted" id="pfPhone"></p>
+  <div class="card" id="pfDoc"></div>
+  <button class="go dark" id="logoutBtn" style="background:rgba(251,113,133,0.12);color:var(--accent);border:1px solid rgba(251,113,133,0.35);margin-top:16px">Logout</button>
 
-      <div style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.25);border-radius:12px;padding:8px 12px;font-size:12px;color:#c4b5fd;margin:12px 0">
-        💡 <b>Existing Demo Account:</b> Number <b>9876543210</b> contains preloaded ride history. Or enter any new number to create a fresh profile!
-      </div>
-
-      <button class="book-btn" onclick="handleSendOtp()">Get OTP</button>
-    </div>
-
-    <!-- STEP 2: VERIFY OTP -->
-    <div id="stepOtp" style="display:none">
-      <h2 style="font-size:22px;font-weight:800;text-align:center;margin-bottom:6px">Verify Mobile</h2>
-      <p style="font-size:13px;color:#94a3b8;text-align:center;margin-bottom:12px" id="otpPhoneNotice">Enter 4-digit OTP sent to your number</p>
-
-      <div class="otp-display" id="otpDemoBanner">🔑 Your Demo OTP is: <b>1234</b></div>
-
-      <div class="form-group">
-        <label class="form-label" style="text-align:center">4-Digit OTP</label>
-        <input type="text" class="form-input" id="loginOtpInput" placeholder="1234" maxlength="4" style="text-align:center;font-size:24px;letter-spacing:10px;font-weight:800">
-      </div>
-
-      <button class="book-btn" onclick="handleVerifyOtp()">Verify OTP & Log In</button>
-      <div style="text-align:center;margin-top:12px">
-        <button onclick="backToPhoneStep()" style="background:none;border:0;color:#94a3b8;font-size:13px;cursor:pointer">Change mobile number</button>
-      </div>
-    </div>
-
-    <!-- STEP 3: NEW USER REGISTRATION -->
-    <div id="stepRegister" style="display:none">
-      <h2 style="font-size:22px;font-weight:800;text-align:center;margin-bottom:6px">Complete Profile</h2>
-      <p style="font-size:13px;color:#94a3b8;text-align:center;margin-bottom:18px">First time logging in! Set up your passenger details:</p>
-
-      <div class="form-group">
-        <label class="form-label">Full Name</label>
-        <input class="form-input" id="regNameInput" placeholder="e.g. Ramesh Varma">
-      </div>
-
-      <div style="display:flex;gap:10px">
-        <div class="form-group" style="flex:1">
-          <label class="form-label">Gender</label>
-          <select class="form-input" id="regGenderInput">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </div>
-        <div class="form-group" style="width:110px">
-          <label class="form-label">Age</label>
-          <input type="number" class="form-input" id="regAgeInput" placeholder="22" min="18" max="90" value="22">
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Emergency Contact Phone</label>
-        <input type="tel" class="form-input" id="regEmergencyInput" placeholder="Family / Emergency contact">
-      </div>
-
-      <button class="book-btn" onclick="handleCompleteRegistration()">Start Ride Pooling</button>
-    </div>
+  <!-- Shared Bottom Nav -->
+  <div class="nav" style="margin-top:24px">
+    <div class="btnNavRide"><span class="material-icons">navigation</span>Ride</div>
+    <div class="btnNavHistory"><span class="material-icons">history</span>Travel History</div>
+    <div class="btnNavTravel"><span class="material-icons">route</span>Travel</div>
+    <div class="on btnNavProfile"><span class="material-icons">person_outline</span>Profile</div>
   </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-// ================= USER DATABASE & SEED DATA =================
-function getUsersDb(){
-  try{ return JSON.parse(localStorage.getItem("routemate_users") || "{}"); }
-  catch(e){ return {}; }
-}
-function saveUsersDb(db){
-  try{ localStorage.setItem("routemate_users", JSON.stringify(db)); }
-  catch(e){}
-}
-
-function initSeedUsers(){
-  const db = getUsersDb();
-  if(!db["9876543210"]){
-    db["9876543210"] = {
-      phone: "9876543210",
-      name: "Tharun Kumar",
-      gender: "male",
-      age: 23,
-      riderVerified: true,
-      riderDl: "AP07 20230008472",
-      riderRc: "AP 16 BK 5522",
-      rides: [
-        {
-          id: "RM-9481",
-          date: "Yesterday, 6:30 PM",
-          from: "Bhavani Puram, Vijayawada",
-          to: "Kanaka Durga Temple, Ghat Road",
-          vehicle: "Bike Pooling",
-          icon: "🏍️",
-          fare: "₹38",
-          distance: "4.8 km",
-          status: "Completed",
-          role: "Passenger"
-        },
-        {
-          id: "RM-8204",
-          date: "10 Oct 2026, 9:15 AM",
-          from: "Benz Circle, MG Road",
-          to: "Vijayawada Railway Station",
-          vehicle: "Auto Rickshaw",
-          icon: "🛺",
-          fare: "₹45",
-          distance: "3.2 km",
-          status: "Completed",
-          role: "Passenger"
-        },
-        {
-          id: "RM-7119",
-          date: "08 Oct 2026, 7:45 PM",
-          from: "PVP Square Mall",
-          to: "Gannavaram Airport Road",
-          vehicle: "Car Sedan",
-          icon: "🚘",
-          fare: "₹185",
-          distance: "14.2 km",
-          status: "Completed",
-          role: "Rider"
-        }
-      ]
-    };
-    saveUsersDb(db);
-  }
-}
-initSeedUsers();
-
-// Current active session
-function getCurrentUser(){
-  const phone = localStorage.getItem("current_user_phone");
-  if(!phone) return null;
-  const db = getUsersDb();
-  return db[phone] || null;
-}
-
-// ================= AUTH FLOW (PHONE + OTP + PROFILE) =================
-let pendingPhone = "";
-let generatedOtp = "1234";
-
-function checkAuthStatus(){
-  const user = getCurrentUser();
-  if(!user){
-    $("loginScreen").style.display = "flex";
-    showLoginStep("stepPhone");
-  }else{
-    $("loginScreen").style.display = "none";
-    loadUserProfile(user);
-    renderHistoryScreen();
-  }
-}
-
-function showLoginStep(stepId){
-  $("stepPhone").style.display = stepId === "stepPhone" ? "block" : "none";
-  $("stepOtp").style.display = stepId === "stepOtp" ? "block" : "none";
-  $("stepRegister").style.display = stepId === "stepRegister" ? "block" : "none";
-}
-
-function handleSendOtp(){
-  const raw = $("loginPhoneInput").value.trim();
-  if(!raw || raw.length < 10){
-    alert("Please enter a valid 10-digit mobile number.");
-    return;
-  }
-  pendingPhone = raw;
-  generatedOtp = "1234"; // Demo OTP
-  $("otpPhoneNotice").textContent = `Enter 4-digit OTP sent to +91 ${pendingPhone}`;
-  $("otpDemoBanner").innerHTML = `🔑 Your Demo OTP is: <b>${generatedOtp}</b>`;
-  $("loginOtpInput").value = "";
-  showLoginStep("stepOtp");
-  $("loginOtpInput").focus();
-}
-
-function backToPhoneStep(){
-  showLoginStep("stepPhone");
-}
-
-function handleVerifyOtp(){
-  const entered = $("loginOtpInput").value.trim();
-  if(entered !== generatedOtp && entered !== "1234"){
-    alert("Invalid OTP! Please enter 1234.");
-    return;
-  }
-  
-  const db = getUsersDb();
-  if(db[pendingPhone]){
-    // Existing user! Restore session and past ride history!
-    localStorage.setItem("current_user_phone", pendingPhone);
-    $("loginScreen").style.display = "none";
-    loadUserProfile(db[pendingPhone]);
-    renderHistoryScreen();
-    alert(`Welcome back, ${db[pendingPhone].name}! Your past ride history is ready.`);
-  }else{
-    // New user! Go to complete profile step
-    showLoginStep("stepRegister");
-    $("regNameInput").focus();
-  }
-}
-
-function handleCompleteRegistration(){
-  const name = $("regNameInput").value.trim();
-  const gender = $("regGenderInput").value;
-  const age = parseInt($regAgeInput = $("regAgeInput").value) || 22;
-  const emergency = $("regEmergencyInput").value.trim();
-
-  if(!name){
-    alert("Please enter your name.");
-    return;
-  }
-
-  const db = getUsersDb();
-  db[pendingPhone] = {
-    phone: pendingPhone,
-    name: name,
-    gender: gender,
-    age: age,
-    emergency: emergency,
-    riderVerified: false,
-    rides: []
-  };
-  saveUsersDb(db);
-
-  localStorage.setItem("current_user_phone", pendingPhone);
-  $("loginScreen").style.display = "none";
-  loadUserProfile(db[pendingPhone]);
-  renderHistoryScreen();
-  alert(`Welcome to RouteMate, ${name}!`);
-}
-
-function logoutUser(){
-  if(confirm("Are you sure you want to log out of RouteMate?")){
-    localStorage.removeItem("current_user_phone");
-    $("loginPhoneInput").value = "";
-    $("loginOtpInput").value = "";
-    checkAuthStatus();
-  }
-}
-
-function loadUserProfile(user){
-  $("profNameDisplay").textContent = user.name;
-  $("profPhoneDisplay").textContent = "+91 " + user.phone;
-  $("profAvatar").textContent = user.name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
-  $("profNameInput").value = user.name;
-  $("profGenderInput").value = user.gender;
-  $("profAgeInput").value = user.age || 22;
-  $("myGender").value = user.gender;
-
-  updateProfileBadges();
-}
-
-function saveProfileChanges(){
-  const user = getCurrentUser();
-  if(!user) return;
-  const db = getUsersDb();
-  user.name = $("profNameInput").value.trim() || user.name;
-  user.gender = $("profGenderInput").value;
-  user.age = parseInt($("profAgeInput").value) || user.age;
-  db[user.phone] = user;
-  saveUsersDb(db);
-  loadUserProfile(user);
-  alert("Profile saved successfully!");
-}
-
-// ================= RIDE HISTORY RENDERER =================
-function renderHistoryScreen(){
-  const user = getCurrentUser();
-  const rides = (user && user.rides) ? user.rides : [];
-  
-  $("statTripsCount").textContent = rides.length;
-  let totalKm = 0;
-  rides.forEach(r => {
-    const kmNum = parseFloat(r.distance) || 0;
-    totalKm += kmNum;
-  });
-  $("statTotalKm").textContent = totalKm.toFixed(1) + " km";
-  $("statCo2Saved").textContent = (totalKm * 0.18).toFixed(1) + " kg";
-
-  const container = $("historyListContainer");
-  if(!rides.length){
-    container.innerHTML = `<div style="text-align:center;padding:40px 16px;color:#94a3b8">
-      <span class="material-icons" style="font-size:48px;color:#475569">history_toggle_off</span>
-      <div style="font-size:16px;font-weight:700;margin-top:10px;color:#fff">No Past Rides Yet</div>
-      <div style="font-size:13px;margin-top:4px">When you book and complete rides, your ride history with fares will appear here.</div>
-      <button class="book-btn" onclick="switchNav('ride')" style="max-width:200px;margin:20px auto 0;font-size:14px;padding:10px">Book First Ride</button>
-    </div>`;
-    return;
-  }
-
-  container.innerHTML = rides.map(r => `
-    <div class="history-card">
-      <div class="h-top">
-        <div style="display:flex;align-items:center;gap:10px">
-          <span style="font-size:24px">${r.icon}</span>
-          <div>
-            <b style="font-size:15px">${r.vehicle}</b>
-            <div style="font-size:11px;color:#94a3b8">${r.date} · ID: ${r.id}</div>
-          </div>
-        </div>
-        <div style="text-align:right">
-          <b style="font-size:16px;color:var(--pickup)">${r.fare}</b>
-          <div style="font-size:11px;color:var(--accent);font-weight:700">${r.distance}</div>
-        </div>
-      </div>
-      <div class="h-route">
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="dotG" style="width:10px;height:10px"></span>
-          <span style="font-size:13px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.from}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span class="dotO" style="width:10px;height:10px"></span>
-          <span style="font-size:13px;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.to}</span>
-        </div>
-      </div>
-      <div class="h-bottom">
-        <span>Role: <b style="color:#fff">${r.role}</b></span>
-        <span style="color:var(--pickup);font-weight:700">✓ ${r.status}</span>
-      </div>
-    </div>
-  `).join("");
-}
-
-// ================= BASICS & CONFIG =================
+// ================= BASICS =================
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const GOOGLE_KEY="";
 const PIN_Y=.38, DEFAULT=[16.5062,80.648];
-const S={mode:"passenger",stage:"home",target:"drop",active:"to",pickup:null,drop:null,temp:null,
-         vehicle:"bike",route:null,dist:0,dur:0,surge:1};
-let routeLine=null, markers={}, muteUntil=0, bookTok=0, sug=[];
+const S={mode:"passenger",stage:"login",target:"drop",active:"to",pickup:null,drop:null,temp:null,pickFrom:"search",
+         vehicle:"bike",route:null,dist:0,dur:0,surge:1,pay:"cash",token:null,loginPhone:""};
+let ME=null, ST=null, routeLine=null, markers={}, muteUntil=0, bookTok=0, sug=[], lastSig="";
 
-const CID = localStorage.getItem("cid")||("c_"+Math.random().toString(36).slice(2,10));
-localStorage.setItem("cid",CID);
-
-// ================= MAPBOX MAP & SATELLITE/TERRAIN LAYERS =================
 const map=L.map("map",{zoomControl:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false,inertia:false}).setView(DEFAULT,15);
-const MAPBOX_TOKEN = atob("cGsuZXlKMUlqb2ljM1Z1Ym1Gd2RTSXNJbUVpT2lKamJYWTFNM2s0ZFdzd01Yb3pNbmR3Y21Ga1ltMDViak16SW4wLlpjLXJFNnZoNUFYZU1mN2xfWGt0bXc=");
+L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap contributors"}).addTo(map);
+map.attributionControl.setPosition("topright");
 
-const MAP_LAYERS = {
-  satellite: L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
-    tileSize: 256, maxZoom: 19, attribution: '© Mapbox © OpenStreetMap'
-  }),
-  terrain: L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
-    tileSize: 256, maxZoom: 19, attribution: '© Mapbox © OpenStreetMap'
-  }),
-  streets: L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
-    tileSize: 256, maxZoom: 19, attribution: '© Mapbox © OpenStreetMap'
-  }),
-  dark: L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
-    tileSize: 256, maxZoom: 19, attribution: '© Mapbox © OpenStreetMap'
-  })
-};
-
-let currentLayerKey = "satellite"; // Start on colorful satellite map
-MAP_LAYERS[currentLayerKey].addTo(map);
-
-function setMapLayer(name){
-  if(currentLayerKey === name) return;
-  map.removeLayer(MAP_LAYERS[currentLayerKey]);
-  MAP_LAYERS[name].addTo(map);
-  currentLayerKey = name;
-  document.querySelectorAll(".map-layer-btn").forEach(b=>{
-    b.classList.toggle("active", b.dataset.layer === name);
-  });
-}
-
-document.querySelectorAll(".map-layer-btn").forEach(btn=>{
-  btn.onclick = () => setMapLayer(btn.dataset.layer);
-});
-
-// ================= UTILITIES =================
 const debounce=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
 function km(a,b){const R=6371,r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lng-a.lng);
   const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
 const short=(n,k)=>String(n).split(",").slice(0,k).map(x=>x.trim()).join(", ");
+const s1=l=>String(l||"").split(",")[0];
+function toast(t){const d=document.createElement("div");d.textContent=t;$("toast").appendChild(d);setTimeout(()=>d.remove(),5000);}
+
+async function api(p,body){
+  const r=await fetch("/api/"+p,{method:body?"POST":"GET",
+    headers:{"Content-Type":"application/json",...(S.token?{Authorization:"Bearer "+S.token}:{})},
+    body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({}));
+  if(r.status===401&&S.token){forceLogout();throw new Error("Session expired. Please login again.");}
+  if(!r.ok){const e=new Error(j.error||"Something went wrong");e.data=j;throw e;}
+  return j;
+}
 
 function pinLL(){const s=map.getSize();return map.containerPointToLatLng([s.x/2,s.y*PIN_Y]);}
 function goTo(lat,lng,z){
   muteUntil=Date.now()+500;
-  map.setView([lat,lng],z||16,{animate:false});
+  map.setView([lat,lng],Math.max(z||17,17),{animate:false});
   map.panBy([0,map.getSize().y*(.5-PIN_Y)],{animate:false});
 }
 
-// ================= SCREENS =================
+// ================= SCREENS & NAV =================
+const STAGES=["login","verify","home","search","pick","book","profile","history","travel"];
 function show(stage,target){
   S.stage=stage; if(target)S.target=target;
-  ["home","search","pick","book","screenHistory","screenTravel","screenProfile"].forEach(s=>{
-    if($(s)) $(s).style.display = s === stage ? "block" : "none";
+  STAGES.forEach(s=>{
+    const el=$(s);
+    if(el) el.style.display=s===stage?"block":"none";
   });
   $("pin").style.display=(stage==="home"||stage==="pick")?"block":"none";
   const drop=stage==="pick"&&S.target==="drop";
   $("pin").className=drop?"drop":"";
   $("pinLab").textContent=drop?"Drop point":"Pickup point";
+  $("bell").style.display=(stage==="home"||stage==="book"||stage==="profile"||stage==="history"||stage==="travel")?"flex":"none";
+  if(stage!=="home"&&stage!=="book"&&stage!=="profile"&&stage!=="history"&&stage!=="travel")$("notifPanel").style.display="none";
+
+  // Sync nav highlights across screens
+  document.querySelectorAll(".nav div").forEach(d=>d.classList.remove("on"));
+  if(stage==="home") document.querySelectorAll(".btnNavRide").forEach(d=>d.classList.add("on"));
+  else if(stage==="history") document.querySelectorAll(".btnNavHistory").forEach(d=>d.classList.add("on"));
+  else if(stage==="travel") document.querySelectorAll(".btnNavTravel").forEach(d=>d.classList.add("on"));
+  else if(stage==="profile") document.querySelectorAll(".btnNavProfile").forEach(d=>d.classList.add("on"));
 }
 
-// ================= GEOCODING (Mapbox + Fallbacks) =================
+// Global Nav Clicks
+document.querySelectorAll(".btnNavRide").forEach(el=>el.onclick=()=>show("home"));
+document.querySelectorAll(".btnNavHistory").forEach(el=>el.onclick=openHistory);
+document.querySelectorAll(".btnNavTravel").forEach(el=>el.onclick=openTravel);
+document.querySelectorAll(".btnNavProfile").forEach(el=>el.onclick=openProfile);
+
+// ================= GEOCODING =================
 async function reverse(lat,lng){
+  if(GOOGLE_KEY){
+    try{const r=await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY}`);
+      const j=await r.json(); if(j.results&&j.results[0])return short(j.results[0].formatted_address,4);}catch(e){}
+  }
   try{
-    const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`);
-    if(r.ok){
-      const j=await r.json();
-      if(j&&j.features&&j.features[0]){
-        const f=j.features[0];
-        const name=f.text||f.place_name.split(",")[0];
-        const sub=f.place_name.split(",").slice(1,3).join(", ").trim();
-        return sub?`${name}, ${sub}`:name;
-      }
-    }
-  }catch(e){}
-  try{
-    const r=await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
-    if(r.ok){
-      const j=await r.json();
-      if(j&&j.features&&j.features[0]){
-        const p=j.features[0].properties||{};
-        const name=p.name||p.street||p.locality||"Pinned location";
-        const sub=[p.locality||p.district,p.city].filter(Boolean).filter(x=>x!==name).join(", ");
-        return sub?`${name}, ${sub}`:name;
-      }
-    }
-  }catch(e){}
-  try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${lat}&lon=${lng}`);
-    const j=await r.json();
-    return j.display_name?short(j.display_name,3):"Pinned location";
-  }catch(e){return "Pinned location";}
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1&lat=${lat}&lon=${lng}`);
+    const j=await r.json(), a=j.address||{};
+    const bld=a.building&&a.building!=="yes"?a.building:"";
+    const num=a.house_number?(a.house_number+" "+(a.road||"")).trim():"";
+    const name=j.name||a.amenity||bld||a.shop||a.tourism||a.leisure||num||a.road||"";
+    const area=[a.road&&name!==a.road?a.road:null,a.neighbourhood||a.suburb||a.hamlet,a.city||a.town||a.village||a.county].filter(Boolean);
+    const s=[name,...area].filter(Boolean).join(", ");
+    return s||short(j.display_name||"Pinned location",3);
+  }catch(e){return "Pinned location"}
 }
-
+async function gSearch(q){
+  const c=S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
+  const r=await fetch("https://places.googleapis.com/v1/places:autocomplete",{method:"POST",
+    headers:{"Content-Type":"application/json","X-Goog-Api-Key":GOOGLE_KEY},
+    body:JSON.stringify({input:q,regionCode:"IN",locationBias:{circle:{center:{latitude:c.lat,longitude:c.lng},radius:30000}}})});
+  const j=await r.json();
+  return (j.suggestions||[]).filter(s=>s.placePrediction).map(s=>({placeId:s.placePrediction.placeId,label:s.placePrediction.text.text}));
+}
+async function gDetails(p){
+  const r=await fetch("https://places.googleapis.com/v1/places/"+p.placeId,{headers:{"X-Goog-Api-Key":GOOGLE_KEY,"X-Goog-FieldMask":"location,displayName,formattedAddress"}});
+  const j=await r.json();
+  return {lat:j.location.latitude,lng:j.location.longitude,label:(j.displayName&&j.displayName.text?j.displayName.text+", ":"")+short(j.formattedAddress||"",3)};
+}
 async function searchPlaces(q){
-  if(!q||q.trim().length<2)return[];
+  if(GOOGLE_KEY){try{const g=await gSearch(q);if(g.length)return g;}catch(e){} }
   const c=S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
   try{
-    const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${MAPBOX_TOKEN}&proximity=${c.lng},${c.lat}&country=in&limit=8`);
-    if(r.ok){
-      const data=await r.json();
-      if(data&&data.features&&data.features.length){
-        return data.features.map(f=>{
-          const text=f.text||f.place_name.split(",")[0];
-          const sub=f.place_name.split(",").slice(1,4).join(", ").trim();
-          return {
-            lat:f.center[1],
-            lng:f.center[0],
-            label:sub?`${text}, ${sub}`:text
-          };
-        });
-      }
-    }
+    const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=10&lat=${c.lat}&lon=${c.lng}&lang=en`);
+    const j=await r.json(); const seen=new Set();
+    const out=j.features.filter(f=>!f.properties.countrycode||f.properties.countrycode==="IN").map(f=>{
+      const p=f.properties,[lng,lat]=f.geometry.coordinates;
+      const name=p.name||[p.housenumber,p.street].filter(Boolean).join(" ")||p.city||"";
+      const area=[p.name&&p.street?p.street:null,p.district||p.locality||p.suburb,p.city||p.county,p.state].filter(Boolean);
+      return {lat,lng,label:[name,...area].join(", ")};
+    }).filter(x=>x.label&&!seen.has(x.label)&&seen.add(x.label));
+    if(out.length)return out;
   }catch(e){}
   try{
-    const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${c.lat}&lon=${c.lng}&limit=8`);
-    if(r.ok){
-      const data=await r.json();
-      if(data&&data.features&&data.features.length){
-        return data.features.map(f=>{
-          const p=f.properties||{};
-          const name=p.name||p.street||p.locality||p.district||"Location";
-          const sub=[p.street,p.locality||p.district,p.city||p.county,p.state].filter(Boolean).filter(x=>x!==name).slice(0,3).join(", ");
-          return {lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0],label:sub?`${name}, ${sub}`:name};
-        });
-      }
-    }
-  }catch(e){}
-  try{
-    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=in&q=${encodeURIComponent(q)}`);
-    if(r.ok){
-      const j=await r.json();
-      if(j&&j.length)return j.map(x=>({lat:+x.lat,lng:+x.lon,label:short(x.display_name,4)}));
-    }
-  }catch(e){}
-  return [];
+    const vb=`${c.lng-.6},${c.lat+.6},${c.lng+.6},${c.lat-.6}`;
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=in&viewbox=${vb}&q=${encodeURIComponent(q)}`);
+    const j=await r.json();
+    return j.map(x=>({lat:+x.lat,lng:+x.lon,label:short(x.display_name,4)}));
+  }catch(e){return[]}
 }
 
 let revT,revTok=0;
@@ -1014,7 +701,6 @@ function debRev(p,key){
     if(key==="temp"&&S.temp){S.temp.label=label;$("pickAddr").textContent=label;}
   },500);
 }
-
 map.on("moveend",()=>{
   if(Date.now()<muteUntil)return;
   const p=pinLL();
@@ -1027,12 +713,11 @@ map.on("moveend",()=>{
   }
 });
 
-// ================= LOCATION =================
+// ================= CURRENT LOCATION =================
 async function setPickup(lat,lng,label,move){
   S.pickup={lat,lng,label:label||"Locating…"};
-  $("pickupText").textContent=S.pickup.label;
-  $("inFrom").value=S.pickup.label;
-  if(move)goTo(lat,lng,16);
+  $("pickupText").textContent=S.pickup.label; $("inFrom").value=label||"";
+  if(move)goTo(lat,lng,17);
   if(!label){
     const l=await reverse(lat,lng);
     if(S.pickup&&S.pickup.lat===lat&&S.pickup.lng===lng){S.pickup.label=l;$("pickupText").textContent=l;$("inFrom").value=l;}
@@ -1049,36 +734,34 @@ $("locBtn").onclick=()=>locate();
 $("curBtn").onclick=()=>locate(()=>{$("inTo").focus();});
 
 // ================= RECENTS + SUGGESTIONS =================
-function recents(){try{return JSON.parse(localStorage.getItem("rc")||"[]")}catch(e){return[]}}
-function saveRecent(p){try{const l=recents().filter(x=>x.label!==p.label);l.unshift(p);localStorage.setItem("rc",JSON.stringify(l.slice(0,6)))}catch(e){}}
+const rcKey=()=>"rc_"+(ME?ME.phone:"x");
+function recents(){try{return JSON.parse(localStorage.getItem(rcKey())||"[]")}catch(e){return[]}}
+function saveRecent(p){try{const l=recents().filter(x=>x.label!==p.label);l.unshift({lat:p.lat,lng:p.lng,label:p.label});localStorage.setItem(rcKey(),JSON.stringify(l.slice(0,6)))}catch(e){}}
 function renderList(el,list){
   sug=list;
-  const isRecent=el.id==="homeRecents";
-  const icon=isRecent?"history":"place";
-  const iconColor=isRecent?"#94a3b8":"var(--accent)";
   const from=S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
   el.innerHTML=list.map((p,i)=>{
     const parts=p.label.split(",");
-    const d=km(from,p);
-    return `<div class="place-item" data-i="${i}">
-      <div class="km"><span class="material-icons" style="font-size:20px;color:${iconColor}">${icon}</span><br>${d.toFixed(1)} km</div>
-      <div><div class="nm">${esc(parts[0])}</div><div class="ad">${esc(parts.slice(1).join(","))}</div></div>
-    </div>`;
+    return `<div class="item" data-i="${i}"><div class="km"><span class="material-icons" style="font-size:20px;color:var(--accent)">${el.id==="homeRecents"?"history":"place"}</span><br>${p.lat!=null?km(from,p).toFixed(1)+" km":""}</div>
+      <div><div class="nm">${esc(parts[0])}</div><div class="ad">${esc(parts.slice(1).join(","))}</div></div></div>`;
   }).join("");
-  el.querySelectorAll(".place-item").forEach(it=>it.onclick=()=>choose(sug[+it.dataset.i],el.id==="homeRecents"?"to":null));
+  el.querySelectorAll(".item").forEach(it=>it.onclick=()=>choose(sug[+it.dataset.i],el.id==="homeRecents"?"to":null));
 }
 function renderRecents(){renderList($("homeRecents"),recents());}
 
-function choose(p,which){
-  const w=which||S.active;
-  if(w==="from"){
-    S.pickup={...p}; $("pickupText").textContent=p.label; $("inFrom").value=p.label;
-    goTo(p.lat,p.lng,16);
-    if(S.drop){startBooking();}else{S.active="to";$("inTo").focus();}
-    return;
-  }
-  S.drop={...p}; saveRecent(p); $("inTo").value=p.label;
-  startBooking();
+async function choose(p,which){
+  const w=which||S.active, target=w==="from"?"pickup":"drop";
+  if(p.placeId&&p.lat==null){try{p=await gDetails(p)}catch(e){toast("Could not load that place");return;}}
+  openPick(target,p);
+}
+function openPick(target,p){
+  S.pickFrom=S.stage==="pick"?S.pickFrom:S.stage;
+  show("pick",target);
+  goTo(p.lat,p.lng,17);
+  S.temp={lat:p.lat,lng:p.lng,label:p.label||"Locating…"};
+  $("pickAddr").textContent=S.temp.label;
+  $("pickOk").textContent=target==="drop"?"Confirm drop & proceed":"Confirm pickup";
+  if(!p.label)debRev(p,"temp");
 }
 
 // ================= SEARCH SCREEN =================
@@ -1091,378 +774,507 @@ function openSearch(active){
 }
 $("whereBtn").onclick=()=>openSearch("to");
 $("pickupPill").onclick=()=>openSearch("from");
-$("searchBack").onclick=()=>{show("home");if(S.pickup)goTo(S.pickup.lat,S.pickup.lng,16);renderRecents();};
+$("searchBack").onclick=()=>{show("home");if(S.pickup)goTo(S.pickup.lat,S.pickup.lng,17);renderRecents();};
 $("inFrom").onfocus=()=>S.active="from";
 $("inTo").onfocus=()=>S.active="to";
 async function onType(which,q){
   S.active=which;
-  if(q.trim().length<2){renderList($("sugg"),recents());return;}
+  if(q.trim().length<3){renderList($("sugg"),recents());return;}
   const res=await searchPlaces(q);
   if(S.active===which)renderList($("sugg"),res);
 }
-$("inFrom").addEventListener("input",debounce(e=>onType("from",e.target.value),350));
-$("inTo").addEventListener("input",debounce(e=>onType("to",e.target.value),350));
+$("inFrom").addEventListener("input",debounce(e=>onType("from",e.target.value),450));
+$("inTo").addEventListener("input",debounce(e=>onType("to",e.target.value),450));
 
-// ================= MAP SELECTION =================
+// ================= SELECT FROM MAP / CONFIRM =================
 $("selMap").onclick=()=>{
   const target=S.active==="from"?"pickup":"drop";
-  const base=target==="drop"&&S.drop?S.drop:S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
-  show("pick",target);
-  goTo(base.lat,base.lng,16);
-  S.temp={lat:base.lat,lng:base.lng,label:base.label||"Locating…"};
-  $("pickAddr").textContent=S.temp.label; debRev(base,"temp");
+  const base=target==="drop"&&S.drop?S.drop:S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1],label:""};
+  openPick(target,base);
 };
-$("pickBack").onclick=()=>show("search");
+$("pickBack").onclick=()=>{
+  if(S.pickFrom==="home"){show("home");if(S.pickup)goTo(S.pickup.lat,S.pickup.lng,17);}
+  else show("search");
+};
 $("pickOk").onclick=()=>{
   if(!S.temp)return;
   const p={...S.temp};
   if(S.target==="pickup"){
-    S.pickup=p; $("pickupText").textContent=p.label; $("inFrom").value=p.label;
+    S.pickup=p;$("pickupText").textContent=p.label;$("inFrom").value=p.label;
+    if(S.drop&&S.pickFrom!=="home")startBooking();
+    else if(S.pickFrom==="home"){show("home");}
+    else {show("search");S.active="to";$("inTo").value="";$("inTo").focus();}
   }else{
-    S.drop=p; saveRecent(p); $("inTo").value=p.label;
+    S.drop=p;saveRecent(p);$("inTo").value=p.label;startBooking();
   }
-  if(S.pickup&&S.drop)startBooking();
-  else if(S.drop){show("search");S.active="from";$("inFrom").focus();}
-  else {show("search");S.active="to";$("inTo").focus();}
 };
 
-// ================= VEHICLE CATALOG & PRICING =================
-// Bike: 7-10 Rs/km
-// Auto: 7-13 Rs/km
-// Car Economy: 8-15 Rs/km
-// Sedan: 10-18 Rs/km
-// SUV: 13-22 Rs/km
-const V = [
-  {id:"bike", name:"Bike Pooling", short:"Bike", icon:"🏍️", min:7, max:10, cap:1, desc:"1 seat · Solo commuter"},
-  {id:"auto", name:"Auto Rickshaw", short:"Auto", icon:"🛺", min:7, max:13, cap:3, desc:"3 seats · Shared per passenger"},
-  {id:"eco",  name:"Car Economy",  short:"Economy", icon:"🚗", min:8, max:15, cap:4, desc:"4 seats · Compact AC"},
-  {id:"sedan",name:"Car Sedan",    short:"Sedan", icon:"🚘", min:10, max:18, cap:4, desc:"4 seats · Premium legroom"},
-  {id:"suv",  name:"Car SUV",      short:"SUV", icon:"🚙", min:13, max:22, cap:6, desc:"6 seats · Family capacity"}
+// ================= PRICING =================
+const V=[
+  {id:"bike", name:"Bike Pooling",   short:"Bike",  icon:"two_wheeler",       seats:1,eta:3,base:20,perKm:8, perMin:.5},
+  {id:"auto", name:"Auto Rickshaw",  short:"Auto",  icon:"electric_rickshaw", seats:3,eta:4,base:25,perKm:10,perMin:.8},
+  {id:"eco",  name:"Cab Economy",    short:"Cab",   icon:"local_taxi",        seats:4,eta:5,base:30,perKm:12,perMin:1},
+  {id:"sedan",name:"Car Sedan",      short:"Sedan", icon:"directions_car",    seats:4,eta:6,base:40,perKm:14,perMin:1.2},
+  {id:"suv",  name:"Car SUV",        short:"SUV",   icon:"airport_shuttle",   seats:6,eta:7,base:55,perKm:18,perMin:1.5}
 ];
-
-function fare(v, d){
-  const dist = Math.max(1, d);
-  const mid = (v.min + v.max) / 2;
-  return Math.round(mid * dist);
+const vName=id=>(V.find(v=>v.id===id)||{short:id}).short;
+const FESTIVALS=["01-14","03-14","08-15","10-20","11-08","12-25"];
+async function computeSurge(lat,lng){
+  let s=1;
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=precipitation`);
+    const j=await r.json();
+    if((j.current&&j.current.precipitation)>.1)s*=1.2;
+  }catch(e){}
+  const d=new Date(),k=String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  if(FESTIVALS.includes(k))s*=1.3;
+  return s;
 }
+function trafficFactor(){
+  const d=new Date(), h=d.getHours()+d.getMinutes()/60, wd=d.getDay()>0&&d.getDay()<6;
+  if(wd&&((h>=8&&h<11)||(h>=17&&h<21))) return 1.3;
+  if(!wd&&h>=17&&h<22) return 1.15;
+  if(wd&&h>=11&&h<17) return 1.05;
+  return 1;
+}
+const fare=v=>Math.round((v.base+v.perKm*S.dist+v.perMin*S.dur)*S.surge);
+const vehicleList=()=>S.mode==="rider"&&ME&&ME.doc?V.filter(v=>v.id===ME.doc.vehicleType):V;
 
 function renderVehicles(){
-  const d = S.dist || 3;
-  $("vList").innerHTML = V.map(v=>{
-    const price = fare(v, d);
-    const on = v.id === S.vehicle ? "on" : "";
-    return `<div class="vrow ${on}" data-v="${v.id}">
-      <div class="vico">${v.icon}</div>
-      <div>
-        <div class="vname">${v.name}</div>
-        <div class="vsub">${v.desc} · ${v.cap} seats</div>
-      </div>
-      <div class="vpr">₹${price}
-        <small>₹${v.min}-${v.max}/km</small>
-      </div>
-    </div>`;
-  }).join("");
-
-  document.querySelectorAll(".vrow").forEach(el=>{
-    el.onclick=()=>{ S.vehicle=el.dataset.v; renderVehicles(); };
-  });
-
-  const curV = V.find(x=>x.id===S.vehicle);
-  $("goBtn").textContent = S.mode==="passenger" ? `Book ${curV.short} · ₹${fare(curV, d)}` : `Offer ${curV.short} Pool`;
+  const list=vehicleList();
+  if(!list.some(v=>v.id===S.vehicle))S.vehicle=list[0].id;
+  $("vList").innerHTML=list.map(v=>`
+    <div class="vrow ${v.id===S.vehicle?"on":""}" data-v="${v.id}">
+      <div class="ic"><span class="material-icons">${v.icon}</span></div>
+      <div class="mid"><div class="vn">${v.name}</div>
+        <div class="sub">${v.eta} min away • ${S.route?"Drop in ~"+Math.round(v.eta+S.dur)+" mins":"Drop in --"} • <span class="material-icons" style="font-size:13px;vertical-align:-2px">person</span>${v.seats} Seats</div></div>
+      <div class="pr">${S.route?"₹"+fare(v):"…"}</div>
+    </div>`).join("");
+  document.querySelectorAll(".vrow").forEach(el=>el.onclick=()=>{S.vehicle=el.dataset.v;renderVehicles();});
+  const v=V.find(x=>x.id===S.vehicle);
+  $("goBtn").textContent=S.mode==="passenger"?"Find rider · "+v.short:"Find passengers · "+v.short;
+  $("payWrap").style.display=S.mode==="passenger"?"block":"none";
 }
 
-// ================= BOOKING & ROUTE DRAWING =================
-async function startBooking(){
-  show("book");
-  $("vehicleView").style.display="block";
-  $("matchView").style.display="none";
-  renderVehicles();
-
-  const a=S.pickup, b=S.drop;
-  if(!a||!b)return;
-
+// ================= BOOKING / ROUTE =================
+function clearRoute(){
   if(routeLine){map.removeLayer(routeLine);routeLine=null;}
   Object.values(markers).forEach(m=>map.removeLayer(m)); markers={};
-
-  markers.p = L.circleMarker([a.lat,a.lng],{radius:8,color:"#34D399",fillColor:"#34D399",fillOpacity:1}).addTo(map);
-  markers.d = L.circleMarker([b.lat,b.lng],{radius:8,color:"#F97316",fillColor:"#F97316",fillOpacity:1}).addTo(map);
-
-  const tok=++bookTok;
+  S.route=null;
+}
+async function startBooking(){
+  clearRoute(); show("book");
+  $("vehicleView").style.display="block"; $("matchView").style.display="none";
+  const tok=++bookTok, a=S.pickup, b=S.drop;
+  renderVehicles(); refreshOpts();
+  markers.a=L.marker([a.lat,a.lng],{icon:L.divIcon({className:"",html:'<div class="mk"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+  markers.b=L.marker([b.lat,b.lng],{icon:L.divIcon({className:"",html:'<span class="material-icons" style="color:var(--accent);font-size:40px;display:block;line-height:40px;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.6))">place</span>',iconSize:[40,40],iconAnchor:[20,38]})}).addTo(map);
+  muteUntil=Date.now()+800;
+  map.fitBounds([[a.lat,a.lng],[b.lat,b.lng]],{paddingTopLeft:[50,90],paddingBottomRight:[50,$("bookSheet").offsetHeight+30],animate:false});
+  let coords,dist,dur;
   try{
     const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`);
-    const j=await r.json();
-    if(tok!==bookTok)return;
-    if(j.routes&&j.routes[0]){
-      const route=j.routes[0];
-      S.route=route.geometry.coordinates.map(c=>[c[1],c[0]]);
-      S.dist=route.distance/1000;
-      S.dur=Math.round(route.duration/60);
-      routeLine=L.polyline(S.route,{color:"#8B5CF6",weight:5,opacity:0.85}).addTo(map);
-      map.fitBounds(routeLine.getBounds(),{padding:[60,60]});
-      renderVehicles();
-      $("travelActiveText").innerHTML = `<b>${short(a.label,2)}</b> ➔ <b>${short(b.label,2)}</b><br>${S.dist.toFixed(1)} km · ~${S.dur} mins`;
-    }
+    const j=await r.json(); const rt=j.routes[0];
+    coords=rt.geometry.coordinates.map(c=>[c[1],c[0]]); dist=rt.distance/1000; dur=rt.duration/60;
   }catch(e){
-    S.dist=km(a,b);
-    renderVehicles();
+    dist=km(a,b)*1.3; dur=dist/25*60; coords=[[a.lat,a.lng],[b.lat,b.lng]];
   }
+  if(tok!==bookTok)return;
+  const surge=await computeSurge(a.lat,a.lng);
+  if(tok!==bookTok)return;
+  S.route=coords; S.dist=dist; S.dur=dur*trafficFactor(); S.surge=surge;
+  routeLine=L.polyline(coords,{color:"#c084fc",weight:5,opacity:0.9}).addTo(map);
+  muteUntil=Date.now()+800;
+  map.fitBounds(routeLine.getBounds(),{paddingTopLeft:[50,90],paddingBottomRight:[50,$("bookSheet").offsetHeight+30],animate:false});
+  renderVehicles();
 }
-
 $("bookBack").onclick=()=>{
-  stopAll();
-  show("home");
-  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
-  Object.values(markers).forEach(m=>map.removeLayer(m)); markers={};
-  if(S.pickup)goTo(S.pickup.lat,S.pickup.lng,15);
+  if($("matchView").style.display==="block"){show("home");return;}
+  clearRoute();openSearch("to");
 };
 
-// ================= RIDER VERIFICATION & MODAL =================
-function isRiderVerified(){
-  const user = getCurrentUser();
-  return user && user.riderVerified;
-}
-
-function openRiderDocsModal(){
-  $("riderDocsModal").style.display="flex";
-}
-function closeRiderDocsModal(){
-  $("riderDocsModal").style.display="none";
-}
-
-function markUploaded(cardId, input){
-  if(input.files && input.files[0]){
-    const card = $(cardId);
-    card.classList.add("uploaded");
-    const name = input.files[0].name;
-    card.querySelector("div").textContent = "✓ " + name.slice(0, 22);
-  }
-}
-
-function submitRiderVerification(){
-  const dl = $("docDlNum").value.trim();
-  const rc = $("docRcNum").value.trim();
-  const aadh = $("docAadhaarNum").value.trim();
-  
-  if(!dl || !rc){
-    alert("Please enter your Driving Licence and Vehicle RC numbers.");
-    return;
-  }
-  
-  const user = getCurrentUser();
-  if(user){
-    const db = getUsersDb();
-    user.riderVerified = true;
-    user.riderDl = dl;
-    user.riderRc = rc;
-    user.riderAadhaar = aadh;
-    db[user.phone] = user;
-    saveUsersDb(db);
-    updateProfileBadges();
-  }
-  
-  closeRiderDocsModal();
-  setMode("rider");
-  alert("🎉 Rider Verification Approved! You can now offer rides and accept passengers.");
-}
-
-function updateProfileBadges(){
-  const verified = isRiderVerified();
-  const badge = $("profRiderStatusBadge");
-  const btn = $("profDocsBtn");
-  const summary = $("profDocsSummary");
-  const user = getCurrentUser();
-  
-  if(verified){
-    badge.className = "status-pill verified";
-    badge.innerHTML = "✓ Verified Rider Partner";
-    btn.textContent = "View Verified Credentials";
-    const dl = (user && user.riderDl) ? user.riderDl : "DL Active";
-    const rc = (user && user.riderRc) ? user.riderRc : "RC Verified";
-    summary.textContent = `Credentials: ${dl} · Vehicle: ${rc}`;
-  }else{
-    badge.className = "status-pill unverified";
-    badge.innerHTML = "⚠️ Rider Unverified";
-    btn.textContent = "Upload Rider Documents";
-    summary.textContent = "Documents required before you can accept ride passengers.";
-  }
-}
-
-// ================= MODES (Passenger vs Rider) =================
-function setMode(m){
-  if(m==="rider" && !isRiderVerified()){
-    openRiderDocsModal();
-    return;
-  }
+// ================= MODES & OPTIONS =================
+function setMode(m,silent){
+  if(m==="rider"&&!(ME&&ME.doc&&ME.doc.verified)){show("verify");return;}
   S.mode=m;
-  $("mPass").classList.toggle("tab-active",m==="passenger");
-  $("mRider").classList.toggle("tab-active",m==="rider");
-  $("femWrap").style.display=(S.mode==="passenger"&&$("myGender").value==="female")?"inline-flex":"none";
-  if(S.stage==="book")renderVehicles();
+  $("mPass").classList.toggle("on",m==="passenger");
+  $("mRider").classList.toggle("on",m==="rider");
+  if(m==="rider")S.vehicle=ME.doc.vehicleType;
 }
-
 $("mPass").onclick=()=>setMode("passenger");
 $("mRider").onclick=()=>setMode("rider");
-$("myGender").onchange=()=>setMode(S.mode);
+function refreshOpts(){
+  $("femWrap").style.display=(S.mode==="passenger"&&$("myGender").value==="female")?"inline":"none";
+  renderVehicles();
+}
+$("myGender").onchange=refreshOpts;
+document.querySelectorAll("#paySeg button").forEach(b=>b.onclick=()=>{
+  S.pay=b.dataset.p;
+  document.querySelectorAll("#paySeg button").forEach(x=>x.classList.toggle("on",x===b));
+});
 
-// ================= BOTTOM NAVIGATION SWITCHER =================
-function switchNav(screen){
-  document.querySelectorAll(".nav-item").forEach(it=>it.classList.remove("active"));
-  const navBtn = $("nav" + screen.charAt(0).toUpperCase() + screen.slice(1));
-  if(navBtn) navBtn.classList.add("active");
+// ================= LOGIN / LOGOUT =================
+$("sendOtp").onclick=async()=>{
+  const ph=$("phone").value.trim(); $("loginErr").textContent="";
+  if(!/^[6-9]\d{9}$/.test(ph)){$("loginErr").textContent="Enter a valid 10-digit mobile number";return;}
+  try{
+    const j=await api("auth/send",{phone:ph});
+    S.loginPhone=ph; $("stepPhone").style.display="none"; $("stepOtp").style.display="block";
+    $("demoHint").innerHTML=j.demoOtp?`Demo OTP: <b style="color:var(--accent)">${j.demoOtp}</b>`:"OTP sent to +91 "+ph;
+  }catch(e){$("loginErr").textContent=e.message}
+};
+$("verifyOtp").onclick=async()=>{
+  $("loginErr").textContent="";
+  try{
+    const j=await api("auth/verify",{phone:S.loginPhone,code:$("otp").value.trim(),name:$("nameIn").value});
+    if(j.needName){$("nameIn").style.display="block";$("loginErr").textContent="New number — enter your name to continue";return;}
+    S.token=j.token; try{localStorage.setItem("rt",j.token)}catch(e){}
+    await enterApp();
+  }catch(e){$("loginErr").textContent=e.message}
+};
+$("changeNum").onclick=()=>{$("stepOtp").style.display="none";$("stepPhone").style.display="block";$("otp").value="";$("nameIn").style.display="none";$("loginErr").textContent="";};
 
-  if(screen==="ride"){
-    show(S.pickup && S.drop ? "book" : "home");
-  }else if(screen==="history"){
-    renderHistoryScreen();
-    show("screenHistory");
-  }else if(screen==="travel"){
-    show("screenTravel");
-  }else if(screen==="profile"){
-    const user = getCurrentUser();
-    if(user) loadUserProfile(user);
-    show("screenProfile");
+let tickT=null;
+function forceLogout(){
+  S.token=null; ME=null; ST=null; try{localStorage.removeItem("rt")}catch(e){}
+  clearInterval(tickT); stopSharing(); clearRoute();
+  S.drop=null; S.pickup=null; lastSig="";
+  $("stepOtp").style.display="none";$("stepPhone").style.display="block";$("otp").value="";$("nameIn").style.display="none";
+  show("login");
+}
+$("logoutBtn").onclick=async()=>{try{await api("logout",{})}catch(e){} forceLogout();};
+
+async function enterApp(){
+  ME=await api("me");
+  S.mode="passenger"; $("mPass").classList.add("on"); $("mRider").classList.remove("on");
+  show("home"); renderRecents();
+  locate();
+  since=0; firstTick=true; NL=[]; seenUpTo=0;
+  clearInterval(tickT); tickT=setInterval(tick,3000); tick();
+  try{if("Notification" in window&&Notification.permission==="default")Notification.requestPermission();}catch(e){}
+}
+
+// ================= RIDER VERIFICATION =================
+let docImg=null;
+function readImage(file){return new Promise((res,rej)=>{
+  const fr=new FileReader();
+  fr.onload=()=>{const im=new Image();
+    im.onload=()=>{const sc=Math.min(1,1000/Math.max(im.width,im.height));const c=document.createElement("canvas");
+      c.width=im.width*sc;c.height=im.height*sc;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.8));};
+    im.onerror=rej;im.src=fr.result;};
+  fr.onerror=rej;fr.readAsDataURL(file);});}
+$("docFile").onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{docImg=await readImage(f);$("docPrev").src=docImg;$("docPrev").style.display="block";}catch(x){$("verErr").textContent="Could not read that image";}
+};
+$("verBack").onclick=()=>show("home");
+$("verSubmit").onclick=async()=>{
+  $("verErr").textContent="";
+  const b={docType:$("docType").value,docNumber:$("docNum").value.trim(),vehicleType:$("vType").value,
+    vehicleNo:$("vNo").value.trim().toUpperCase(),upi:$("upiId").value.trim(),image:docImg};
+  if(!b.docNumber||!b.vehicleNo||!b.image){$("verErr").textContent="Fill all required fields and upload a photo of your document";return;}
+  try{
+    await api("doc",b); ME=await api("me");
+    show("home"); setMode("rider"); toast("Verification complete. You are now a verified rider.");
+  }catch(e){$("verErr").textContent=e.message}
+};
+
+// ================= PAST TRAVEL HISTORY SCREEN =================
+function getSampleHistory(){
+  return [
+    { id: "RM-9481", role: "passenger", vehicle: "bike", status: "completed", fare: 38, pay: "cash", pickup: "Bhavani Puram, Vijayawada", drop: "Kanaka Durga Temple, Ghat Road", partner: "Kiran R.", createdAt: Date.now() - 86400000, dist: 4.8 },
+    { id: "RM-8204", role: "passenger", vehicle: "auto", status: "completed", fare: 45, pay: "upi", pickup: "Benz Circle, MG Road", drop: "Vijayawada Railway Station", partner: "Srinivas K.", createdAt: Date.now() - 172800000, dist: 3.2 },
+    { id: "RM-7119", role: "rider", vehicle: "sedan", status: "completed", fare: 185, pay: "cash", pickup: "PVP Square Mall", drop: "Gannavaram Airport Road", partner: "Ramesh P.", createdAt: Date.now() - 345600000, dist: 14.2 }
+  ];
+}
+
+async function openHistory(){
+  show("history");
+  $("histList").innerHTML='<div class="muted">Loading travel history…</div>';
+  try{
+    const j=await api("history");
+    const rides=(j&&j.rides&&j.rides.length)?j.rides:getSampleHistory();
+    
+    // Total aggregate stats
+    const totalKm=rides.reduce((acc,r)=>acc+(parseFloat(r.dist||4.5)),0).toFixed(1);
+    const co2=(totalKm*0.18).toFixed(1);
+    $("histCount").textContent=rides.length;
+    $("histKm").textContent=totalKm+" km";
+    $("histEco").textContent=co2+" kg";
+
+    $("histList").innerHTML=rides.map(r=>{
+      const isDone=r.status==="completed";
+      return `<div class="hist" style="border-left:3.5px solid ${isDone?'#34d399':'#fb7185'}">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <b style="color:#fecdd3;font-size:15px">${r.role==="rider"?"As Rider":"As Passenger"} · ${esc(vName(r.vehicle))}</b>
+          <span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px;background:${isDone?'rgba(52,211,153,0.18)':'rgba(251,113,133,0.18)'};color:${isDone?'#34d399':'#fb7185'}">
+            ${esc(r.status.toUpperCase())}
+          </span>
+        </div>
+        <div style="color:#e2e8f0;font-size:13px;margin:6px 0">
+          <div><span style="color:#34d399;font-weight:bold">●</span> ${esc(s1(r.pickup))}</div>
+          <div style="margin-top:2px"><span style="color:#fb7185;font-weight:bold">●</span> ${esc(s1(r.drop))}</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(251,113,133,0.12);padding-top:8px;margin-top:6px;font-size:12px;color:#cbd5e1">
+          <span>With <b>${esc(r.partner)}</b> · ${r.pay==="upi"?"UPI":"Cash"}</span>
+          <b style="color:var(--accent);font-size:15px">₹${r.fare}</b>
+        </div>
+        <div class="muted" style="margin-top:4px;font-size:11px;margin-bottom:0">${new Date(r.createdAt||Date.now()).toLocaleString()}</div>
+      </div>`;
+    }).join("");
+  }catch(e){
+    $("histList").innerHTML='<div class="muted">Could not load history.</div>';
   }
 }
 
-// ================= RECORD NEW RIDE TO HISTORY =================
-function recordCompletedRide(curV, d, fareAmount){
-  const user = getCurrentUser();
-  if(!user) return;
-  const db = getUsersDb();
-  if(!user.rides) user.rides = [];
+// ================= TRAVEL & LIVE ACTIVITY SCREEN =================
+const CITY_SPOTS=[
+  { name: "Kanaka Durga Temple", desc: "Indrakeeladri Hill, Ghat Road", lat: 16.5147, lng: 80.6057, icon: "temple_hindu" },
+  { name: "PVP Square Mall", desc: "MG Road, Acharya Ranga Nagar", lat: 16.5015, lng: 80.6482, icon: "shopping_bag" },
+  { name: "Vijayawada Railway Station", desc: "Station Road, Hanumanpet", lat: 16.5186, lng: 80.6202, icon: "train" },
+  { name: "Bhavani Island Resort", desc: "Krishna River Tourism", lat: 16.5218, lng: 80.5755, icon: "nature_people" },
+  { name: "Gannavaram Airport", desc: "NH16, Vijayawada International", lat: 16.5273, lng: 80.7967, icon: "flight" }
+];
+
+function openTravel(){
+  show("travel");
   
-  const now = new Date();
-  const timeStr = "Today, " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-  const newRide = {
-    id: "RM-" + Math.floor(1000 + Math.random() * 9000),
-    date: timeStr,
-    from: S.pickup ? short(S.pickup.label, 2) : "Pickup Point",
-    to: S.drop ? short(S.drop.label, 2) : "Drop Point",
-    vehicle: curV ? curV.name : "Pooled Ride",
-    icon: curV ? curV.icon : "🚗",
-    fare: "₹" + fareAmount,
-    distance: d.toFixed(1) + " km",
-    status: "Completed",
-    role: S.mode === "rider" ? "Rider" : "Passenger"
-  };
-  
-  user.rides.unshift(newRide);
-  db[user.phone] = user;
-  saveUsersDb(db);
-  renderHistoryScreen();
+  // 1. Live route status
+  const activeRide=ST&&ST.rides&&ST.rides.length?ST.rides[0]:null;
+  const activeSearch=ST&&ST.listing;
+
+  if(activeRide){
+    $("travelStatusBadge").textContent="RIDE BOOKED";
+    $("travelStatusBadge").style.borderColor="#34d399";
+    $("travelStatusBadge").style.color="#34d399";
+    $("travelActiveInfo").innerHTML=`
+      <b style="color:#fff">${esc(activeRide.partner.name)}</b> (${activeRide.role==='passenger'?'Rider':'Passenger'})<br>
+      ${esc(s1(activeRide.pickup.label))} → ${esc(s1(activeRide.drop.label))}<br>
+      Vehicle: <b>${esc(vName(activeRide.vehicle))}</b> · Fare: <b>₹${activeRide.fare}</b> (${activeRide.pay==='upi'?'UPI':'Cash'})
+    `;
+    $("travelActiveActions").style.display="block";
+  }else if(activeSearch){
+    $("travelStatusBadge").textContent="SEARCHING ROUTE";
+    $("travelStatusBadge").style.borderColor="#c084fc";
+    $("travelStatusBadge").style.color="#c084fc";
+    $("travelActiveInfo").innerHTML=`
+      Searching: ${esc(s1(activeSearch.pickup))} → ${esc(s1(activeSearch.drop))}<br>
+      Vehicle: <b>${esc(vName(activeSearch.vehicle))}</b> · Fare: <b>₹${activeSearch.fare}</b>
+    `;
+    $("travelActiveActions").style.display="block";
+  }else{
+    $("travelStatusBadge").textContent="STANDBY";
+    $("travelStatusBadge").style.borderColor="var(--accent)";
+    $("travelStatusBadge").style.color="var(--accent)";
+    $("travelActiveInfo").textContent="No active route selected. Set your pickup and drop point on the map to start your journey.";
+    $("travelActiveActions").style.display="none";
+  }
+
+  // 2. Render popular city spots
+  $("travelSpotsList").innerHTML=CITY_SPOTS.map((s,i)=>`
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;margin-bottom:0" onclick="quickTravelTo(${i})">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="width:40px;height:40px;border-radius:12px;background:rgba(251,113,133,0.15);display:flex;align-items:center;justify-content:center;color:var(--accent)">
+          <span class="material-icons">${s.icon}</span>
+        </div>
+        <div>
+          <b style="color:var(--text);font-size:14px">${esc(s.name)}</b>
+          <div style="color:#94a3b8;font-size:12px">${esc(s.desc)}</div>
+        </div>
+      </div>
+      <button class="btnlink" style="margin:0;padding:6px 14px;font-size:12px">Go</button>
+    </div>
+  `).join("");
 }
 
-// ================= SERVER MATCHING & TRACKING =================
-const api=(p,body)=>fetch("/api/"+p,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:undefined).then(r=>r.json());
-let poll=null, watchId=null, listed=false, sharing=false;
-let partnerMarkers={};
+function quickTravelTo(idx){
+  const dest=CITY_SPOTS[idx];
+  if(!dest)return;
+  choose({lat:dest.lat,lng:dest.lng,label:dest.name+", Vijayawada"},"to");
+}
 
-const myName=()=>{
-  const user = getCurrentUser();
-  return (user ? user.name : "User").trim();
-};
+// ================= PROFILE SCREEN =================
+$("pfBack").onclick=()=>show("home");
+async function openProfile(){
+  show("profile");
+  $("pfName").textContent=ME.name; $("pfPhone").textContent="+91 "+ME.phone;
+  $("pfDoc").innerHTML=ME.doc&&ME.doc.verified
+    ?`<span class="live"><span class="material-icons" style="font-size:16px">check_circle</span> Verified Rider Partner</span><br><div style="margin-top:6px;color:#cbd5e1">${esc(vName(ME.doc.vehicleType))} · ${esc(ME.doc.vehicleNo)}${ME.doc.upi?"<br>UPI: "+esc(ME.doc.upi):""}</div>`
+    :`Not verified as a rider yet.<br><button style="margin-top:10px;padding:9px 18px;border:0;border-radius:20px;background:var(--grad);font-weight:700;color:#fff;cursor:pointer" onclick="show('verify')">Verify rider documents</button>`;
+}
+function payLabel(r){
+  if(r.status==="cancelled")return "cancelled";
+  if(r.payStatus==="paid")return "paid";
+  if(r.payStatus==="paid_claimed")return "UPI paid (awaiting confirmation)";
+  if(r.payStatus==="unpaid")return "not received";
+  return "payment pending";
+}
 
-$("goBtn").onclick=async()=>{
-  if(!S.route)return;
-  $("vehicleView").style.display="none";
-  $("matchView").style.display="block";
-  $("results").innerHTML='<div style="padding:20px;text-align:center;color:#94a3b8"><span class="material-icons" style="font-size:36px;animation:spin 1.5s linear infinite">sync</span><br>Finding matches along your route…</div>';
-
-  const curV = V.find(x=>x.id===S.vehicle);
-  const cost = fare(curV, S.dist || 3);
-  // Record this trip into user past history!
-  recordCompletedRide(curV, S.dist || 3, cost);
-
-  const me=$("myGender").value;
-  const thin=r=>{const s=Math.ceil(r.length/200);return r.filter((_,i)=>i%s===0||i===r.length-1);};
-  await api("listing",{clientId:CID,name:myName(),role:S.mode,gender:me,vehicle:S.vehicle,
-    femaleOnly:S.mode==="passenger"&&me==="female"&&$("femaleOnly").checked,
-    pickup:S.pickup,drop:S.drop,route:thin(S.route)});
-  listed=true;
-
-  $("matchTitle").textContent=S.mode==="passenger"?"Riders on your route":"Passengers on your route";
-  refreshMatches();
-  if(!poll)poll=setInterval(refreshMatches,3000);
-  startLocationSharing();
-};
-
-async function refreshMatches(){
+// ================= POLLING =================
+let since=0, firstTick=true, NL=[], seenUpTo=0;
+async function tick(){
+  if(!S.token)return;
   try{
-    const [m,ib,rd]=await Promise.all([api("matches?clientId="+CID),api("inbox?clientId="+CID),api("ride?clientId="+CID)]);
-    renderMatches(m.matches||[],ib.requests||[],rd.partners||[]);
+    const st=await api("state?since="+since);
+    ST=st;
+    st.notifs.forEach(n=>{
+      since=Math.max(since,n.id); NL.unshift(n);
+      if(!firstTick){
+        toast(n.text);
+        try{if("Notification" in window&&Notification.permission==="granted")new Notification("RouteMate",{body:n.text});}catch(e){}
+      }
+    });
+    NL=NL.slice(0,40);
+    if(firstTick){seenUpTo=since;firstTick=false;}
+    const unread=NL.filter(n=>n.id>seenUpTo).length;
+    $("bellN").style.display=unread?"block":"none"; $("bellN").textContent=unread;
+    updateBanner(st); handleLive(st);
+    if(S.stage==="book"&&$("matchView").style.display==="block")renderMatch(st);
   }catch(e){}
 }
-
-function renderMatches(list,inbox,partners){
-  let h="";
-  if(inbox.length){
-    h+='<h4 style="color:var(--accent);margin-bottom:8px">Incoming Requests</h4>';
-    inbox.forEach(r=>{
-      h+=`<div class="card"><b>${esc(r.passengerName)}</b> · ${r.passengerGender} wants to join your ride<br>
-        <button onclick="respond(${r.id},true)" style="background:var(--pickup);color:#000">Accept</button>
-        <button onclick="respond(${r.id},false)" style="background:rgba(255,255,255,0.1);margin-left:6px">Decline</button></div>`;
-    });
-  }
-  if(partners.length){
-    h+=`<div style="color:var(--pickup);font-weight:700;margin:10px 0">✓ Live Sharing Active (${partners.length} partner)</div>`;
-  }
-  if(!list.length && !inbox.length){
-    h+='<div style="padding:16px;text-align:center;color:#94a3b8">Searching for pooling partners along your route…</div>';
-  }else{
-    list.forEach(x=>{
-      const occ=x.vehicle==="bike"?"Bike · 1 seat":(x.inside.length?`Passengers inside: ${x.inside.length} (${x.inside.join(", ")})`:"Vehicle empty");
-      const btn=x.status==="accepted"?"Accepted":x.status==="pending"?"Waiting for rider…":x.status==="rejected"?"Declined":"Request ride";
-      h+=`<div class="card"><b>${esc(x.name)}</b> · ${x.gender}<br>Vehicle: ${V.find(v=>v.id===x.vehicle)?.name||x.vehicle}<br>${occ}
-        <br><button ${x.status?"disabled":""} onclick="sendReq('${x.id}')">${btn}</button></div>`;
-    });
-  }
-  $("results").innerHTML=h;
-  updatePartnerMarkers(partners);
+$("bell").onclick=()=>{
+  const p=$("notifPanel");
+  if(p.style.display==="block"){p.style.display="none";return;}
+  p.innerHTML=NL.length?NL.map(n=>`<div>${esc(n.text)}<br><span class="muted" style="margin:0;font-size:11px">${new Date(n.t).toLocaleTimeString()}</span></div>`).join(""):'<div class="muted">No notifications yet</div>';
+  p.style.display="block"; seenUpTo=since; $("bellN").style.display="none";
+};
+function updateBanner(st){
+  const b=$("banner");
+  if(st.rides.length){b.style.display="block";b.textContent="Active ride · tap to view";}
+  else if(st.listing){b.style.display="block";b.textContent=`Searching for ${st.listing.role==="rider"?"passengers":"riders"} · ${st.matches.length} on your route · tap to view`;}
+  else b.style.display="none";
+}
+$("banner").onclick=openMatchView;
+function openMatchView(){
+  show("book"); $("vehicleView").style.display="none"; $("matchView").style.display="block";
+  lastSig=""; renderMatch(ST||{rides:[],inbox:[],matches:[],listing:null});
 }
 
-function updatePartnerMarkers(partners){
-  const live=new Set(partners.map(p=>p.id));
-  Object.keys(partnerMarkers).forEach(id=>{if(!live.has(id)){map.removeLayer(partnerMarkers[id]);delete partnerMarkers[id];}});
-  partners.forEach(p=>{
-    if(!p.loc)return;
-    if(!partnerMarkers[p.id]){
-      partnerMarkers[p.id]=L.marker([p.loc.lat,p.loc.lng],{
-        icon:L.divIcon({className:"",html:`<div style="background:var(--accent);color:#000;font-weight:800;font-size:11px;padding:3px 8px;border-radius:12px;box-shadow:0 0 10px rgba(6,182,212,0.8)">🚗 ${esc(p.name)}</div>`})
-      }).addTo(map);
-    }else partnerMarkers[p.id].setLatLng([p.loc.lat,p.loc.lng]);
+// ================= SEARCH / MATCH SCREEN =================
+$("goBtn").onclick=async()=>{
+  if(!S.route)return;
+  if(S.mode==="rider"&&!(ME.doc&&ME.doc.verified)){show("verify");return;}
+  const me=$("myGender").value, v=V.find(x=>x.id===S.vehicle);
+  const thin=r=>{const s=Math.ceil(r.length/200);return r.filter((_,i)=>i%s===0||i===r.length-1);};
+  try{
+    await api("listing",{role:S.mode,gender:me,vehicle:S.vehicle,
+      femaleOnly:S.mode==="passenger"&&me==="female"&&$("femaleOnly").checked,
+      pickup:{lat:S.pickup.lat,lng:S.pickup.lng,label:S.pickup.label},
+      drop:{lat:S.drop.lat,lng:S.drop.lng,label:S.drop.label},
+      route:thin(S.route),fare:fare(v),pay:S.pay});
+  }catch(e){
+    if(e.data&&e.data.error==="doc"){show("verify");return;}
+    toast(e.message);return;
+  }
+  await tick(); openMatchView();
+};
+$("matchHome").onclick=()=>show("home");
+$("matchCancel").onclick=async()=>{
+  try{await api("listing/cancel",{})}catch(e){}
+  await tick(); lastSig="";
+  $("matchView").style.display="none"; $("vehicleView").style.display="block";
+};
+
+function payText(r){
+  if(r.pay==="cash")return r.payStatus==="paid"?"Paid in cash":"Pay cash to the rider";
+  if(r.payStatus==="paid")return "Paid via UPI";
+  if(r.payStatus==="paid_claimed")return "UPI paid · waiting for rider to confirm";
+  return "UPI payment pending";
+}
+function rideCard(r){
+  const p=r.partner, isP=r.role==="passenger";
+  let h=`<div class="card"><div class="live"><span class="material-icons" style="font-size:16px">check_circle</span> Ride booked</div>
+    <div style="font-size:16px;font-weight:700;margin:4px 0">${esc(p.name)} · ${isP?"Rider":"Passenger"}${isP&&p.vehicleNo?` · ${esc(p.vehicleNo)}`:""} · ${esc(vName(r.vehicle))}</div>
+    <div style="color:#e2e8f0;margin:6px 0">${esc(s1(r.pickup.label))} → ${esc(s1(r.drop.label))}</div>
+    <div>Fare <b>₹${r.fare}</b> · ${r.pay==="upi"?"UPI":"Cash"} · <b style="color:var(--accent)">${payText(r)}</b></div>
+    <div style="margin-top:8px"><a class="btnlink" href="tel:${esc(p.phone)}">Call +91 ${esc(p.phone)}</a></div>`;
+  if(isP&&r.pay==="upi"&&r.payStatus==="pending"){
+    if(p.upi){
+      const url=`upi://pay?pa=${encodeURIComponent(p.upi)}&pn=${encodeURIComponent(p.name)}&am=${r.fare}&cu=INR&tn=${encodeURIComponent("Ride "+r.id)}`;
+      h+=`<div style="margin-top:8px">Rider UPI ID: <b>${esc(p.upi)}</b></div><a class="btnlink" href="${url}">Pay ₹${r.fare} with UPI app</a>
+        <button onclick="payDone('${r.id}')">I have paid</button>`;
+    }else h+=`<div style="margin-top:8px"><span class="tag">Rider has no UPI ID — pay cash</span></div>`;
+  }
+  if(!isP)h+=`<button onclick="completeRide('${r.id}',${r.fare},'${r.pay}','${r.payStatus}')">Complete ride</button>`;
+  h+=`<button class="dark" onclick="cancelRide('${r.id}')">Cancel ride</button></div>`;
+  return h;
+}
+function renderMatch(st){
+  const sig=JSON.stringify([st.rides.map(r=>[r.id,r.payStatus]),st.inbox,st.matches,st.listing]);
+  if(sig===lastSig)return; lastSig=sig;
+  let h=st.rides.map(rideCard).join("");
+  if(st.listing){
+    h+=`<div class="card"><b>${st.listing.role==="rider"?"Offering shared rides":"Looking for a ride"}</b><br>
+      ${esc(s1(st.listing.pickup))} → ${esc(s1(st.listing.drop))} · ${esc(vName(st.listing.vehicle))} · ₹${st.listing.fare}</div>`;
+    if(st.listing.role==="rider"){
+      h+=st.inbox.map(r=>`<div class="card"><b>${esc(r.name)}</b> · ${r.gender} wants to ride with you${r.femaleOnly?'<span class="tag">female rider only</span>':""}<br>
+        ${esc(s1(r.pickup))} → ${esc(s1(r.drop))}<br>₹${r.fare} · pays by ${r.pay==="upi"?"UPI":"cash"}
+        <div><button onclick="respond(${r.id},true)">Accept &amp; book</button><button class="dark" onclick="respond(${r.id},false)">Decline</button></div></div>`).join("");
+      const waiting=st.matches.filter(x=>!x.status);
+      h+=waiting.length?waiting.map(x=>`<div class="card"><b>${esc(x.name)}</b> · ${x.gender} is going on your route${x.femaleOnly?'<span class="tag">female rider only</span>':""}<br>
+        ${esc(s1(x.pickup))} → ${esc(s1(x.drop))} · ₹${x.fare}<br><span class="muted" style="margin:0">Waiting for them to send a request…</span></div>`).join("")
+        :(st.inbox.length||st.rides.length?"":'<div class="card">No passengers on your route yet. Keep the app open — you will be notified.</div>');
+    }else{
+      h+=st.matches.length?st.matches.map(x=>{
+        const occ=x.vehicle==="bike"?"Bike · no other passengers":(x.inside.length?`Already inside: ${x.inside.length} (${x.inside.join(", ")})`:"Vehicle empty");
+        const noUpi=st.listing.pay==="upi"&&!x.upi;
+        const btn=x.status==="accepted"?"Booked":x.status==="pending"?"Waiting for rider…":x.status==="rejected"?"Declined":noUpi?"Rider accepts cash only":"Request ride";
+        const dis=(x.status||noUpi)?" disabled":"";
+        return `<div class="card"><b>${esc(x.name)}</b> · ${x.gender} · Rider<span class="tag">${x.upi?"Cash &amp; UPI":"Cash only"}</span><br>
+          Same route · ${esc(vName(x.vehicle))}<br>${occ}<div><button${dis} onclick="sendReq('${x.ref}')">${btn}</button></div></div>`;
+      }).join(""):(st.rides.length?"":'<div class="card">No riders on your route yet. Keep the app open — you will be notified when one appears.</div>');
+    }
+  }else if(!st.rides.length)h+='<div class="card">No active search. Go back and enter your locations.</div>';
+  $("results").innerHTML=h;
+}
+async function sendReq(r){try{await api("request",{ref:r});toast("Request sent to the rider");}catch(e){toast(e.message)} lastSig="";tick();}
+async function respond(id,ok){try{await api("respond",{id,accept:ok});}catch(e){toast(e.message)} lastSig="";tick();}
+async function payDone(id){try{await api("ride/pay",{id});toast("Marked as paid. The rider will confirm.");}catch(e){toast(e.message)} lastSig="";tick();}
+async function completeRide(id,fareAmt,pay,ps){
+  const received=ps==="paid"?true:confirm(`Did you receive ₹${fareAmt} (${pay==="upi"?"UPI":"cash"}) from the passenger?`);
+  try{await api("ride/complete",{id,received});toast("Ride completed");}catch(e){toast(e.message)} lastSig="";tick();
+}
+async function cancelRide(id){
+  if(!confirm("Cancel this ride?"))return;
+  try{await api("ride/cancel",{id});}catch(e){toast(e.message)} lastSig="";tick();
+}
+
+// ================= LIVE LOCATION =================
+const FORCE_SIM=location.search.includes("sim");
+let sharing=false, watchId=null, simT=null, pMarkers={};
+function startSharing(){
+  if(sharing)return; sharing=true;
+  const send=(lat,lng)=>api("location",{lat,lng}).catch(()=>{});
+  if(FORCE_SIM||!navigator.geolocation)return simulate(send);
+  watchId=navigator.geolocation.watchPosition(p=>send(p.coords.latitude,p.coords.longitude),()=>simulate(send),{enableHighAccuracy:true});
+}
+function simulate(send){
+  if(simT||!S.route)return;
+  let i=0; const step=Math.max(1,Math.floor(S.route.length/60));
+  simT=setInterval(()=>{i=Math.min(i+step,S.route.length-1);send(S.route[i][0],S.route[i][1]);},2000);
+}
+function stopSharing(){
+  if(simT){clearInterval(simT);simT=null}
+  if(watchId!==null){try{navigator.geolocation.clearWatch(watchId)}catch(e){}watchId=null}
+  Object.values(pMarkers).forEach(m=>map.removeLayer(m)); pMarkers={};
+  sharing=false;
+}
+function handleLive(st){
+  if(st.rides.length&&!sharing)startSharing();
+  if(!st.rides.length&&sharing)stopSharing();
+  const ids=new Set(st.rides.map(r=>r.id));
+  Object.keys(pMarkers).forEach(k=>{if(!ids.has(k)){map.removeLayer(pMarkers[k]);delete pMarkers[k];}});
+  st.rides.forEach(r=>{
+    const l=r.partner.loc; if(!l)return;
+    if(!pMarkers[r.id])pMarkers[r.id]=L.circleMarker([l.lat,l.lng],{radius:9,color:"#fff",weight:3,fillColor:"#9333EA",fillOpacity:1}).addTo(map);
+    else pMarkers[r.id].setLatLng([l.lat,l.lng]);
   });
 }
 
-async function sendReq(id){await api("request",{clientId:CID,targetId:id});refreshMatches();}
-async function respond(id,ok){await api("respond",{clientId:CID,requestId:id,accept:ok});refreshMatches();}
-
-function startLocationSharing(){
-  if(sharing)return; sharing=true;
-  const send=(lat,lng)=>api("location",{clientId:CID,lat,lng});
-  if(navigator.geolocation){
-    watchId=navigator.geolocation.watchPosition(
-      p=>send(p.coords.latitude,p.coords.longitude),
-      ()=>{}, {enableHighAccuracy:true,maximumAge:2000});
-  }
-}
-
-function stopAll(){
-  if(poll){clearInterval(poll);poll=null;}
-  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null;}
-  Object.values(partnerMarkers).forEach(m=>map.removeLayer(m)); partnerMarkers={};
-  sharing=false;
-  if(listed){listed=false;api("cancel",{clientId:CID}).catch(()=>{});}
-}
-
-$("matchBack").onclick=()=>{stopAll();$("matchView").style.display="none";$("vehicleView").style.display="block";};
-window.addEventListener("pagehide",()=>{try{navigator.sendBeacon("/api/cancel",new Blob([JSON.stringify({clientId:CID})],{type:"application/json"}))}catch(e){}});
-
-// ================= INITIALIZE =================
-show("home");
-renderRecents();
-setMode("passenger");
-checkAuthStatus();
-locate();
+// ================= START =================
+try{S.token=localStorage.getItem("rt")}catch(e){}
+show("login");
+if(S.token)enterApp().catch(()=>{S.token=null;show("login");});
 </script>
 </body>
 </html>

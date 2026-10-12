@@ -1,15 +1,46 @@
 const express = require("express");
+const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
+
+// ---------- CONFIG ----------
+const PORT = 5000;
+const DEMO_OTP = true;          // true: OTP is shown on screen + printed in this console (no SMS gateway connected)
+const AUTO_APPROVE_DOCS = true; // true: documents are auto-marked verified (demo). Real KYC needs a verification provider.
+
 const app = express();
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "8mb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
-const listings = new Map();   // clientId -> listing
-const requests = new Map();   // id -> request
-const locations = new Map();  // clientId -> {lat,lng}
-let seq = 1;
+// ---------- PERSISTENT DB (db.json) ----------
+const DB_FILE = path.join(__dirname, "db.json");
+const UP = path.join(__dirname, "uploads");
+if (!fs.existsSync(UP)) fs.mkdirSync(UP);
+let db = { users: {}, sessions: {}, rides: [] };
+try { db = JSON.parse(fs.readFileSync(DB_FILE, "utf8")); } catch (e) {}
+db.users = db.users || {}; db.sessions = db.sessions || {}; db.rides = db.rides || [];
+let saveT;
+const save = () => { clearTimeout(saveT); saveT = setTimeout(() => fs.writeFile(DB_FILE, JSON.stringify(db), () => {}), 200); };
+
+// ---------- IN-MEMORY LIVE DATA ----------
 const CAP = { bike: 1, auto: 3, eco: 4, sedan: 4, suv: 6 };
-const TTL = 30 * 60 * 1000;
+const TTL = 3 * 60 * 1000;           // a search disappears if the app is closed for 3 minutes
+const listings = new Map();          // phone -> active search
+const requests = new Map();          // id -> ride request
+const locs = new Map();              // phone -> {lat,lng}
+const notifs = {};                   // phone -> [{id,text,kind,t}]
+const notified = new Set();          // "riderPhone|passengerPhone"
+const otps = new Map();              // phone -> {code,exp,tries}
+let seq = 1, nseq = 1;
+
+const ref = ph => crypto.createHash("sha1").update("ride" + ph).digest("hex").slice(0, 10);
+const phoneOfRef = r => { for (const k of listings.keys()) if (ref(k) === r) return k; return null; };
+const bookedFor = rp => db.rides.filter(r => r.riderPhone === rp && r.status === "booked");
+const s1 = l => String(l || "").split(",")[0];
+function notify(ph, text, kind) {
+  (notifs[ph] = notifs[ph] || []).push({ id: nseq++, text, kind: kind || "info", t: Date.now() });
+  if (notifs[ph].length > 40) notifs[ph].shift();
+}
 
 function hav(a, b) {
   const R = 6371, r = x => x * Math.PI / 180;
@@ -22,104 +53,259 @@ function nearest(route, pt) {
   route.forEach((c, i) => { const d = hav({ lat: c[0], lng: c[1] }, pt); if (d < bd) { bd = d; bi = i; } });
   return { i: bi, d: bd };
 }
+function isMatch(rider, pass) {
+  if (rider.vehicle !== pass.vehicle) return false;
+  if (pass.femaleOnly && rider.gender !== "female") return false;
+  const a = nearest(rider.route, pass.pickup), b = nearest(rider.route, pass.drop);
+  return a.d <= 0.7 && b.d <= 0.7 && a.i < b.i;   // same route + same direction (700 m tolerance)
+}
+function removeListing(ph) {
+  listings.delete(ph);
+  for (const [k, q] of requests) if ((q.passengerPhone === ph || q.riderPhone === ph) && q.status === "pending") requests.delete(k);
+  for (const k of [...notified]) if (k.split("|").includes(ph)) notified.delete(k);
+}
 function clean() {
   const now = Date.now();
-  for (const [k, v] of listings) if (now - v.t > TTL) listings.delete(k);
+  for (const [ph, l] of listings) if (now - l.t > TTL) removeListing(ph);
 }
-const accepted = riderId => [...requests.values()].filter(r => r.riderId === riderId && r.status === "accepted");
-function removeClient(id) {
-  listings.delete(id); locations.delete(id);
-  for (const [k, r] of requests) if (r.passengerId === id || r.riderId === id) requests.delete(k);
-}
+const publicUser = u => ({
+  phone: u.phone, name: u.name,
+  doc: u.doc ? { verified: !!u.doc.verified, type: u.doc.type, vehicleType: u.doc.vehicleType, vehicleNo: u.doc.vehicleNo, upi: u.doc.upi || "" } : null
+});
 
-app.post("/api/listing", (req, res) => {
-  const b = req.body;
-  if (!b.clientId || !Array.isArray(b.route) || b.route.length < 2 || !b.pickup || !b.drop)
-    return res.status(400).json({ error: "bad request" });
-  removeClient(b.clientId);
-  listings.set(b.clientId, {
-    clientId: b.clientId,
-    name: String(b.name || "User").slice(0, 30),
-    role: b.role === "rider" ? "rider" : "passenger",
+// ---------- AUTH ----------
+const auth = (req, res, next) => {
+  const t = (req.headers.authorization || "").replace("Bearer ", "");
+  const ph = db.sessions[t];
+  if (!ph || !db.users[ph]) return res.status(401).json({ error: "auth" });
+  req.phone = ph; req.user = db.users[ph]; next();
+};
+
+app.post("/api/auth/send", (req, res) => {
+  const phone = String((req.body || {}).phone || "");
+  if (!/^[6-9]\d{9}$/.test(phone)) return res.status(400).json({ error: "Enter a valid 10-digit mobile number" });
+  const code = String(crypto.randomInt(100000, 1000000));
+  otps.set(phone, { code, exp: Date.now() + 5 * 60 * 1000, tries: 0 });
+  console.log(`OTP for ${phone}: ${code}`);
+  res.json({ ok: true, demoOtp: DEMO_OTP ? code : undefined });
+});
+
+app.post("/api/auth/verify", (req, res) => {
+  const { phone, code, name } = req.body || {};
+  const o = otps.get(String(phone));
+  if (!o || Date.now() > o.exp) return res.status(400).json({ error: "OTP expired. Go back and request a new one." });
+  if (++o.tries > 5) { otps.delete(String(phone)); return res.status(429).json({ error: "Too many attempts. Request a new OTP." }); }
+  if (String(code) !== o.code) return res.status(400).json({ error: "Wrong OTP" });
+  let u = db.users[phone];
+  if (!u) {
+    const nm = String(name || "").trim().slice(0, 30);
+    if (!nm) return res.json({ needName: true });
+    u = db.users[phone] = { phone, name: nm, createdAt: Date.now(), doc: null };   // new number => rider documents will be asked
+  }
+  otps.delete(String(phone));
+  const token = crypto.randomBytes(24).toString("hex");
+  db.sessions[token] = phone;
+  save();
+  res.json({ token, user: publicUser(u) });
+});
+
+app.get("/api/me", auth, (req, res) => res.json(publicUser(req.user)));
+app.post("/api/logout", auth, (req, res) => {
+  const t = (req.headers.authorization || "").replace("Bearer ", "");
+  delete db.sessions[t]; save(); res.json({ ok: true });
+});
+
+// ---------- RIDER DOCUMENT VERIFICATION (once per number) ----------
+app.post("/api/doc", auth, (req, res) => {
+  const b = req.body || {};
+  const m = /^data:image\/(jpeg|png);base64,(.+)$/.exec(b.image || "");
+  if (!m) return res.status(400).json({ error: "Upload a photo of your document" });
+  if (!b.docNumber || String(b.docNumber).length < 6) return res.status(400).json({ error: "Enter a valid document number" });
+  if (!b.vehicleNo || String(b.vehicleNo).length < 4) return res.status(400).json({ error: "Enter your vehicle number" });
+  if (!CAP[b.vehicleType]) return res.status(400).json({ error: "Choose a vehicle type" });
+  if (b.upi && !/^[\w.\-]{2,}@[\w]{2,}$/.test(b.upi)) return res.status(400).json({ error: "UPI ID looks invalid (example: name@upi)" });
+  const buf = Buffer.from(m[2], "base64");
+  if (buf.length > 5 * 1024 * 1024) return res.status(400).json({ error: "Image is too large" });
+  const fn = `${req.phone}-${Date.now()}.${m[1] === "png" ? "png" : "jpg"}`;
+  fs.writeFileSync(path.join(UP, fn), buf);
+  req.user.doc = {
+    type: String(b.docType || "Driving Licence").slice(0, 30), number: String(b.docNumber).slice(0, 30),
+    vehicleType: b.vehicleType, vehicleNo: String(b.vehicleNo).slice(0, 15), upi: b.upi ? String(b.upi).slice(0, 60) : "",
+    image: fn, verified: AUTO_APPROVE_DOCS, submittedAt: Date.now(), verifiedAt: AUTO_APPROVE_DOCS ? Date.now() : null
+  };
+  save();
+  res.json({ ok: true, verified: AUTO_APPROVE_DOCS });
+});
+
+// ---------- SEARCH LISTING + MATCH NOTIFICATIONS ----------
+app.post("/api/listing", auth, (req, res) => {
+  const b = req.body || {};
+  const role = b.role === "rider" ? "rider" : "passenger";
+  const okPt = p => p && isFinite(p.lat) && isFinite(p.lng) && typeof p.label === "string";
+  if (!okPt(b.pickup) || !okPt(b.drop) || !Array.isArray(b.route) || b.route.length < 2 || b.route.length > 400)
+    return res.status(400).json({ error: "Invalid locations" });
+  let vehicle = CAP[b.vehicle] ? b.vehicle : "bike";
+  if (role === "rider") {
+    if (!req.user.doc || !req.user.doc.verified) return res.status(403).json({ error: "doc" });
+    vehicle = req.user.doc.vehicleType;
+  }
+  removeListing(req.phone);
+  const l = {
+    phone: req.phone, name: req.user.name, role, vehicle,
     gender: b.gender === "female" ? "female" : "male",
-    vehicle: CAP[b.vehicle] ? b.vehicle : "bike",
-    femaleOnly: !!b.femaleOnly,
-    pickup: b.pickup, drop: b.drop,
-    route: b.route.slice(0, 300),
+    femaleOnly: role === "passenger" && !!b.femaleOnly,
+    pickup: { lat: +b.pickup.lat, lng: +b.pickup.lng, label: b.pickup.label.slice(0, 160) },
+    drop: { lat: +b.drop.lat, lng: +b.drop.lng, label: b.drop.label.slice(0, 160) },
+    route: b.route.map(c => [+c[0], +c[1]]),
+    fare: Math.max(0, Math.min(100000, Math.round(+b.fare || 0))),
+    pay: b.pay === "upi" ? "upi" : "cash",
     t: Date.now()
-  });
-  res.json({ ok: true });
-});
-
-app.get("/api/matches", (req, res) => {
-  clean();
-  const me = listings.get(req.query.clientId);
-  if (!me) return res.json({ matches: [] });
-  const out = [];
+  };
+  listings.set(req.phone, l);
   for (const o of listings.values()) {
-    if (o.clientId === me.clientId || o.role === me.role) continue;
-    const rider = me.role === "rider" ? me : o;
-    const pass = me.role === "rider" ? o : me;
-    if (rider.vehicle !== pass.vehicle) continue;
-    if (pass.femaleOnly && rider.gender !== "female") continue;
-    const rq = [...requests.values()].find(r => r.passengerId === pass.clientId && r.riderId === rider.clientId);
-    if (accepted(rider.clientId).length >= CAP[rider.vehicle] && !(rq && rq.status === "accepted")) continue;
-    const a = nearest(rider.route, pass.pickup), b = nearest(rider.route, pass.drop);
-    if (a.d > 0.7 || b.d > 0.7 || a.i >= b.i) continue;
-    out.push({
-      id: o.clientId, name: o.name, gender: o.gender, vehicle: o.vehicle, femaleOnly: o.femaleOnly,
-      inside: accepted(rider.clientId).map(r => r.passengerGender),
-      status: rq ? rq.status : null
-    });
+    if (o.phone === l.phone || o.role === l.role) continue;
+    const rider = l.role === "rider" ? l : o, pass = l.role === "rider" ? o : l;
+    if (pass.rideId || !isMatch(rider, pass)) continue;
+    if (bookedFor(rider.phone).length >= CAP[rider.vehicle]) continue;
+    const key = rider.phone + "|" + pass.phone;
+    if (notified.has(key)) continue;
+    notified.add(key);
+    notify(rider.phone, `${pass.name} wants a ride on your route: ${s1(pass.pickup.label)} → ${s1(pass.drop.label)} (₹${pass.fare})`, "match");
+    notify(pass.phone, `${rider.name} is riding on your route. Open the app and request the ride.`, "match");
   }
-  res.json({ matches: out });
+  res.json({ ok: true });
+});
+app.post("/api/listing/cancel", auth, (req, res) => { removeListing(req.phone); res.json({ ok: true }); });
+
+function ridePayload(r, ph) {
+  const isP = r.passengerPhone === ph, pp = isP ? r.riderPhone : r.passengerPhone, u = db.users[pp] || {};
+  return {
+    id: r.id, role: isP ? "passenger" : "rider", status: r.status, fare: r.fare, pay: r.pay, payStatus: r.payStatus,
+    vehicle: r.vehicle, pickup: r.pickup, drop: r.drop,
+    partner: { name: u.name || "User", phone: pp, loc: locs.get(pp) || null,
+      upi: isP && u.doc ? u.doc.upi || "" : "", vehicleNo: isP && u.doc ? u.doc.vehicleNo || "" : "" }
+  };
+}
+
+// ---------- ONE ENDPOINT THE APP POLLS: notifications + matches + requests + active rides ----------
+app.get("/api/state", auth, (req, res) => {
+  clean();
+  const ph = req.phone, since = +req.query.since || 0;
+  const me = listings.get(ph);
+  const out = { notifs: (notifs[ph] || []).filter(n => n.id > since), listing: null, matches: [], inbox: [], rides: [] };
+  if (me) {
+    me.t = Date.now();
+    out.listing = { role: me.role, vehicle: me.vehicle, pickup: me.pickup.label, drop: me.drop.label, fare: me.fare, pay: me.pay };
+    for (const o of listings.values()) {
+      if (o.phone === ph || o.role === me.role) continue;
+      const rider = me.role === "rider" ? me : o, pass = me.role === "rider" ? o : me;
+      const rq = [...requests.values()].find(r => r.passengerPhone === pass.phone && r.riderPhone === rider.phone && r.status !== "cancelled");
+      if (pass.rideId && !(rq && rq.status === "accepted")) continue;
+      if (!isMatch(rider, pass)) continue;
+      if (bookedFor(rider.phone).length >= CAP[rider.vehicle] && !(rq && rq.status === "accepted")) continue;
+      const item = { ref: ref(o.phone), name: o.name, gender: o.gender, vehicle: o.vehicle, status: rq ? rq.status : null };
+      if (me.role === "passenger") {
+        item.upi = !!(db.users[o.phone].doc && db.users[o.phone].doc.upi);
+        item.inside = bookedFor(o.phone).map(r => r.passengerGender);
+      } else {
+        item.pickup = o.pickup.label; item.drop = o.drop.label; item.fare = o.fare; item.pay = o.pay; item.femaleOnly = o.femaleOnly;
+      }
+      out.matches.push(item);
+    }
+    if (me.role === "rider")
+      out.inbox = [...requests.values()].filter(r => r.riderPhone === ph && r.status === "pending").map(r => ({
+        id: r.id, name: r.passengerName, gender: r.passengerGender, pickup: r.pickup.label, drop: r.drop.label,
+        fare: r.fare, pay: r.pay, femaleOnly: r.femaleOnly }));
+  }
+  out.rides = db.rides.filter(r => r.status === "booked" && (r.riderPhone === ph || r.passengerPhone === ph)).map(r => ridePayload(r, ph));
+  res.json(out);
 });
 
-app.post("/api/request", (req, res) => {
-  const { clientId, targetId } = req.body;
-  const p = listings.get(clientId), r = listings.get(targetId);
-  if (!p || !r || p.role !== "passenger" || r.role !== "rider") return res.status(400).json({ error: "bad request" });
-  if (accepted(targetId).length >= CAP[r.vehicle]) return res.status(409).json({ error: "full" });
-  let ex = [...requests.values()].find(x => x.passengerId === clientId && x.riderId === targetId);
+// ---------- REQUEST / ACCEPT / PAY / COMPLETE / CANCEL ----------
+app.post("/api/request", auth, (req, res) => {
+  const p = listings.get(req.phone), rph = phoneOfRef((req.body || {}).ref), r = rph && listings.get(rph);
+  if (!p || p.role !== "passenger" || !r || r.role !== "rider" || !isMatch(r, p)) return res.status(400).json({ error: "This rider is no longer available" });
+  if (p.rideId) return res.status(409).json({ error: "You already have a booked ride" });
+  if (p.pay === "upi" && !(db.users[rph].doc && db.users[rph].doc.upi)) return res.status(400).json({ error: "This rider accepts cash only" });
+  if (bookedFor(rph).length >= CAP[r.vehicle]) return res.status(409).json({ error: "The vehicle is full" });
+  let ex = [...requests.values()].find(x => x.passengerPhone === p.phone && x.riderPhone === rph && (x.status === "pending" || x.status === "accepted"));
   if (!ex) {
-    ex = { id: seq++, passengerId: clientId, riderId: targetId, passengerName: p.name, passengerGender: p.gender, status: "pending" };
+    ex = { id: seq++, passengerPhone: p.phone, riderPhone: rph, passengerName: p.name, passengerGender: p.gender, femaleOnly: p.femaleOnly,
+      pickup: p.pickup, drop: p.drop, fare: p.fare, pay: p.pay, status: "pending" };
     requests.set(ex.id, ex);
+    notify(rph, `${p.name} requested a ride: ${s1(p.pickup.label)} → ${s1(p.drop.label)}, ₹${p.fare}, pays by ${p.pay === "upi" ? "UPI" : "cash"}`, "request");
   }
   res.json({ ok: true });
 });
 
-app.get("/api/inbox", (req, res) => {
-  const id = req.query.clientId;
-  res.json({ requests: [...requests.values()].filter(r => r.riderId === id && r.status === "pending") });
-});
-
-app.post("/api/respond", (req, res) => {
-  const { clientId, requestId, accept } = req.body;
-  const r = requests.get(requestId);
-  if (!r || r.riderId !== clientId) return res.status(400).json({ error: "bad request" });
-  const rider = listings.get(clientId);
-  if (accept && rider && accepted(clientId).length >= CAP[rider.vehicle]) return res.status(409).json({ error: "full" });
-  r.status = accept ? "accepted" : "rejected";
+app.post("/api/respond", auth, (req, res) => {
+  const q = requests.get(+(req.body || {}).id);
+  if (!q || q.riderPhone !== req.phone || q.status !== "pending") return res.status(400).json({ error: "Request not found" });
+  if (!req.body.accept) {
+    q.status = "rejected";
+    notify(q.passengerPhone, `${req.user.name} declined your request`, "info");
+    return res.json({ ok: true });
+  }
+  const rl = listings.get(req.phone), pl = listings.get(q.passengerPhone);
+  if (!rl || !pl || pl.rideId) return res.status(409).json({ error: "Passenger is no longer available" });
+  if (bookedFor(req.phone).length >= CAP[rl.vehicle]) return res.status(409).json({ error: "Your vehicle is full" });
+  const ride = {
+    id: "R" + Date.now().toString(36) + Math.floor(Math.random() * 99),
+    riderPhone: req.phone, passengerPhone: q.passengerPhone, riderName: req.user.name, passengerName: q.passengerName,
+    passengerGender: q.passengerGender, vehicle: rl.vehicle, pickup: pl.pickup, drop: pl.drop, fare: q.fare, pay: q.pay,
+    payStatus: "pending", status: "booked", createdAt: Date.now()
+  };
+  db.rides.push(ride); q.status = "accepted"; q.rideId = ride.id; pl.rideId = ride.id; save();
+  notify(q.passengerPhone, `Ride booked! ${req.user.name} will pick you up. Pay ₹${ride.fare} by ${ride.pay === "upi" ? "UPI" : "cash"} to the rider.`, "booked");
+  notify(req.phone, `You accepted ${q.passengerName}. Collect ₹${ride.fare} (${ride.pay === "upi" ? "UPI" : "cash"}).`, "booked");
   res.json({ ok: true });
 });
 
-app.post("/api/location", (req, res) => {
-  const { clientId, lat, lng } = req.body;
-  if (clientId && isFinite(lat) && isFinite(lng)) locations.set(clientId, { lat, lng });
+const myRide = (req, st) => {
+  const r = db.rides.find(x => x.id === (req.body || {}).id);
+  return r && r.status === "booked" && (r.riderPhone === req.phone || r.passengerPhone === req.phone) ? r : null;
+};
+app.post("/api/ride/pay", auth, (req, res) => {          // passenger: "I have paid by UPI"
+  const r = myRide(req);
+  if (!r || r.passengerPhone !== req.phone || r.pay !== "upi") return res.status(400).json({ error: "Not allowed" });
+  r.payStatus = "paid_claimed"; save();
+  notify(r.riderPhone, `${r.passengerName} says they paid ₹${r.fare} by UPI. Please confirm in your UPI app.`, "pay");
   res.json({ ok: true });
 });
-app.get("/api/ride", (req, res) => {
-  const id = req.query.clientId;
-  const acc = [...requests.values()].filter(r => r.status === "accepted" && (r.passengerId === id || r.riderId === id));
-  const partners = acc.map(r => {
-    const pid = r.passengerId === id ? r.riderId : r.passengerId;
-    const l = listings.get(pid);
-    return { id: pid, name: r.passengerId === id ? (l ? l.name : "Rider") : r.passengerName, loc: locations.get(pid) || null };
+app.post("/api/ride/complete", auth, (req, res) => {      // rider
+  const r = myRide(req);
+  if (!r || r.riderPhone !== req.phone) return res.status(400).json({ error: "Not allowed" });
+  r.status = "completed"; r.completedAt = Date.now(); r.payStatus = req.body.received ? "paid" : "unpaid"; save();
+  removeListing(r.passengerPhone);
+  notify(r.passengerPhone, `Ride completed. Fare ₹${r.fare} (${r.pay === "upi" ? "UPI" : "cash"}). Thank you!`, "done");
+  res.json({ ok: true });
+});
+app.post("/api/ride/cancel", auth, (req, res) => {
+  const r = myRide(req);
+  if (!r) return res.status(400).json({ error: "Not allowed" });
+  r.status = "cancelled"; r.cancelledBy = req.phone; save();
+  for (const q of requests.values()) if (q.rideId === r.id) q.status = "cancelled";
+  const pl = listings.get(r.passengerPhone); if (pl) delete pl.rideId;
+  const other = r.riderPhone === req.phone ? r.passengerPhone : r.riderPhone;
+  notify(other, `${req.user.name} cancelled the ride`, "info");
+  res.json({ ok: true });
+});
+
+app.post("/api/location", auth, (req, res) => {
+  const { lat, lng } = req.body || {};
+  if (isFinite(lat) && isFinite(lng)) locs.set(req.phone, { lat: +lat, lng: +lng });
+  res.json({ ok: true });
+});
+
+app.get("/api/history", auth, (req, res) => {
+  const ph = req.phone;
+  const list = db.rides.filter(r => r.riderPhone === ph || r.passengerPhone === ph).slice().reverse().slice(0, 100).map(r => {
+    const isP = r.passengerPhone === ph;
+    return { id: r.id, role: isP ? "passenger" : "rider", status: r.status, fare: r.fare, pay: r.pay, payStatus: r.payStatus,
+      pickup: r.pickup.label, drop: r.drop.label, vehicle: r.vehicle,
+      partner: isP ? r.riderName : r.passengerName, createdAt: r.createdAt, completedAt: r.completedAt || null };
   });
-  res.json({ partners });
+  res.json({ rides: list });
 });
 
-app.post("/api/cancel", (req, res) => { if (req.body && req.body.clientId) removeClient(req.body.clientId); res.json({ ok: true }); });
-
-app.listen(5000, () => console.log("Running at http://localhost:5000"));
-
+app.listen(PORT, () => console.log("Running at http://localhost:" + PORT));
