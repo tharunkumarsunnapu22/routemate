@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Ride</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;transition:none!important;animation:none!important;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#000;color:#fff}
+#map{position:absolute;inset:0;background:#1a1d24}
+/* Mapbox Dark-v11 tiles are natively dark */
+.leaflet-tile-pane{}
+.leaflet-control-attribution{font-size:9px!important;background:#000a!important;color:#aaa!important}
+.leaflet-control-attribution a{color:#ccc!important}
+.screen{position:absolute;inset:0;z-index:1000;display:none;pointer-events:none}
+.screen>*{pointer-events:auto}
+.full{background:#000;pointer-events:auto;padding:16px max(16px,calc(50% - 244px));overflow-y:auto}
+.back{position:absolute;top:16px;left:max(16px,calc(50% - 244px));width:44px;height:44px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;z-index:5;cursor:pointer}
+.locate{position:absolute;top:70px;right:max(14px,calc(50% - 246px));width:46px;height:46px;border-radius:50%;background:#000;display:flex;align-items:center;justify-content:center;color:#4da3ff;cursor:pointer}
+.sheet{position:absolute;left:50%;transform:translateX(-50%);width:100%;max-width:520px;bottom:0;background:#0b0b0c;border-radius:22px 22px 0 0;padding:10px 16px 0;box-shadow:0 -6px 24px #000a;max-height:75vh;overflow-y:auto}
+.handle{width:40px;height:4px;border-radius:2px;background:#444;margin:0 auto 12px}
+.chips{display:flex;gap:8px;margin-bottom:12px}
+.chip{flex:1;padding:9px;border-radius:20px;border:1px solid #444;background:none;color:#fff;font-weight:600;font-size:14px}
+.chip.on{background:#FFC61A;color:#000;border-color:#FFC61A}
+.pill{display:flex;align-items:center;gap:10px;background:#16181c;border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14px;cursor:pointer}
+.pill span.t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dotG,.dotO{width:18px;height:18px;border-radius:50%;flex:none}
+.dotG{background:#12c04f;box-shadow:0 0 0 4px #0a3d1c}
+.dotO{background:#ff6d00;box-shadow:0 0 0 4px #5a2a00}
+.where{display:flex;align-items:center;gap:12px;border:2px solid #333;border-bottom:2px solid #FFC61A;border-radius:30px;padding:14px 16px;font-size:18px;font-weight:700;margin-bottom:6px;cursor:pointer}
+.rc{max-height:24vh;overflow-y:auto}
+.item{display:flex;gap:12px;padding:14px 2px;border-bottom:1px dashed #333;align-items:flex-start;cursor:pointer}
+.km{width:46px;font-size:12px;color:#aaa;text-align:center;flex:none;padding-top:3px}
+.nm{font-weight:700;font-size:16px}
+.ad{color:#aaa;font-size:14px;margin-top:2px}
+.nav{display:flex;border-top:1px solid #222;margin:8px -16px 0;background:#0b0b0c}
+.nav div{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 0;font-size:12px;color:#bbb}
+.nav .on{color:#fff;font-weight:700}
+#pin{position:absolute;left:50%;top:38%;transform:translate(-50%,-100%);z-index:900;display:none;pointer-events:none;text-align:center}
+#pin .lab{display:inline-block;background:#7fd6a0;color:#000;font-weight:700;padding:7px 14px;border-radius:20px;font-size:14px}
+#pin .material-icons{display:block;font-size:46px;color:#2ecc71;line-height:46px}
+#pin.drop .lab{background:#ff9a7a}
+#pin.drop .material-icons{color:#e53935}
+.box{border:1px solid #333;border-radius:18px;padding:4px 14px;margin:64px 0 14px;background:#0b0b0c}
+.row{display:flex;align-items:center;gap:14px;padding:12px 0}
+.row+.row{border-top:1px solid #333}
+.row input{flex:1;background:none;border:0;outline:0;color:#fff;font-size:16px;min-width:0}
+.btns{display:flex;gap:10px;margin-bottom:6px}
+.btns button{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:26px;background:none;border:1px solid #444;color:#fff;font-size:14px}
+.bar{background:#16181c;border-radius:14px;padding:14px;font-size:14px;margin-bottom:10px}
+.vrow{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;border:2px solid transparent;margin-bottom:6px;cursor:pointer}
+.vrow.on{border-color:#fff}
+.vrow .ic{width:50px;text-align:center}
+.vrow .ic .material-icons{font-size:38px;color:#ffd84d}
+.vrow .mid{flex:1}
+.vrow .vn{font-weight:700;font-size:17px}
+.vrow .sub{color:#aaa;font-size:13px;margin-top:2px}
+.vrow .pr{font-weight:700;font-size:20px;color:#ffb020}
+.opts{display:flex;align-items:center;gap:10px;font-size:14px;padding:8px 4px;flex-wrap:wrap}
+.opts select{background:#16181c;color:#fff;border:1px solid #333;border-radius:8px;padding:6px}
+.pay{display:flex;align-items:center;gap:10px;padding:10px 4px;color:#ddd;font-weight:600}
+.go{width:100%;padding:16px;border:0;border-radius:30px;background:#FFC61A;color:#000;font-size:18px;font-weight:700;margin:8px 0 16px}
+.card{background:#16181c;border-radius:14px;padding:12px;margin-bottom:8px;font-size:14px}
+.card button{margin-top:8px;padding:9px 16px;border:0;border-radius:20px;background:#FFC61A;color:#000;font-weight:700}
+.card button:disabled{background:#333;color:#999}
+.live{color:#4cd37b;font-weight:600}
+.mk{width:22px;height:22px;border-radius:50%;background:#12c04f;border:4px solid #fff}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+<div id="pin"><div class="lab" id="pinLab">Pickup point</div><span class="material-icons">place</span></div>
+
+<!-- HOME -->
+<div id="home" class="screen">
+  <div class="locate" id="locBtn"><span class="material-icons">my_location</span></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="chips">
+      <button class="chip on" id="mPass">Passenger</button>
+      <button class="chip" id="mRider">Rider</button>
+    </div>
+    <div class="pill" id="pickupPill"><span class="dotG"></span><span class="t" id="pickupText">Locating…</span></div>
+    <div class="where" id="whereBtn"><span class="material-icons">search</span>Where do you want to go?</div>
+    <div class="rc" id="homeRecents"></div>
+    <div class="nav">
+      <div class="on"><span class="material-icons">home</span>Ride</div>
+      <div><span class="material-icons">near_me</span>All Services</div>
+      <div><span class="material-icons">beach_access</span>Travel</div>
+      <div><span class="material-icons">person_outline</span>Profile</div>
+    </div>
+  </div>
+</div>
+
+<!-- SEARCH -->
+<div id="search" class="screen full">
+  <div class="back" id="searchBack"><span class="material-icons">arrow_back</span></div>
+  <div class="box">
+    <div class="row"><span class="dotG"></span><input id="inFrom" placeholder="Pickup location" autocomplete="off"></div>
+    <div class="row"><span class="dotO"></span><input id="inTo" placeholder="Drop location" autocomplete="off"></div>
+  </div>
+  <div class="btns">
+    <button id="selMap"><span class="material-icons">place</span>Select from map</button>
+    <button id="curBtn"><span class="material-icons">my_location</span>Current location</button>
+  </div>
+  <div id="sugg"></div>
+</div>
+
+<!-- PICK ON MAP -->
+<div id="pick" class="screen">
+  <div class="back" id="pickBack"><span class="material-icons">arrow_back</span></div>
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="bar" id="pickAddr">Move the map to choose a location</div>
+    <button class="go" id="pickOk">Confirm location</button>
+  </div>
+</div>
+
+<!-- BOOK -->
+<div id="book" class="screen">
+  <div class="back" id="bookBack"><span class="material-icons">arrow_back</span></div>
+  <div class="sheet" id="bookSheet">
+    <div class="handle"></div>
+    <div id="vehicleView">
+      <div id="vList"></div>
+      <div class="opts" id="opts">
+        <span class="material-icons">wc</span>
+        <select id="myGender"><option value="male">I am male</option><option value="female">I am female</option></select>
+        <label id="femWrap" style="display:none"><input type="checkbox" id="femaleOnly"> Female rider only</label>
+      </div>
+      <div class="pay"><span class="material-icons" style="color:#4cd37b">payments</span>Cash</div>
+      <button class="go" id="goBtn">Book Bike</button>
+    </div>
+    <div id="matchView" style="display:none">
+      <div class="pay" id="matchBack" style="cursor:pointer"><span class="material-icons">arrow_back</span><span id="matchTitle">Matches on your route</span></div>
+      <div id="results"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// ================= BASICS =================
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const PIN_Y=.38, DEFAULT=[16.5062,80.648];
+const S={mode:"passenger",stage:"home",target:"drop",active:"to",pickup:null,drop:null,temp:null,
+         vehicle:"bike",route:null,dist:0,dur:0,surge:1};
+let routeLine=null, markers={}, muteUntil=0, bookTok=0, sug=[];
+
+const map=L.map("map",{zoomControl:false,zoomAnimation:false,fadeAnimation:false,markerZoomAnimation:false,inertia:false}).setView(DEFAULT,15);
+const MAPBOX_TOKEN = atob("cGsuZXlKMUlqb2ljM1Z1Ym1Gd2RTSXNJbUVpT2lKamJYWTFNM2s0ZFdzd01Yb3pNbmR3Y21Ga1ltMDViak16SW4wLlpjLXJFNnZoNUFYZU1mN2xfWGt0bXc=");
+L.tileLayer(`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`, {
+  tileSize: 256,
+  maxZoom: 19,
+  attribution: '© <a href="https://www.mapbox.com/" target="_blank">Mapbox</a> © <a href="https://www.openstreetmap.org/" target="_blank">OpenStreetMap</a>'
+}).addTo(map);
+map.attributionControl.setPosition("topright");
+
+const debounce=(fn,ms)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
+function km(a,b){const R=6371,r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lng-a.lng);
+  const h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+const short=(n,k)=>String(n).split(",").slice(0,k).map(x=>x.trim()).join(", ");
+
+function pinLL(){const s=map.getSize();return map.containerPointToLatLng([s.x/2,s.y*PIN_Y]);}
+function goTo(lat,lng,z){
+  muteUntil=Date.now()+500;
+  map.setView([lat,lng],z||16,{animate:false});
+  map.panBy([0,map.getSize().y*(.5-PIN_Y)],{animate:false});
+}
+
+// ================= SCREENS =================
+function show(stage,target){
+  S.stage=stage; if(target)S.target=target;
+  ["home","search","pick","book"].forEach(s=>$(s).style.display=s===stage?"block":"none");
+  $("pin").style.display=(stage==="home"||stage==="pick")?"block":"none";
+  const drop=stage==="pick"&&S.target==="drop";
+  $("pin").className=drop?"drop":"";
+  $("pinLab").textContent=drop?"Drop point":"Pickup point";
+}
+
+// ================= GEOCODING (Mapbox + Fallbacks) =================
+async function reverse(lat,lng){
+  try{
+    const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`);
+    if(r.ok){
+      const j=await r.json();
+      if(j&&j.features&&j.features[0]){
+        const f=j.features[0];
+        const name=f.text||f.place_name.split(",")[0];
+        const sub=f.place_name.split(",").slice(1,3).join(", ").trim();
+        return sub?`${name}, ${sub}`:name;
+      }
+    }
+  }catch(e){}
+  try{
+    const r=await fetch(`https://photon.komoot.io/reverse?lat=${lat}&lon=${lng}`);
+    if(r.ok){
+      const j=await r.json();
+      if(j&&j.features&&j.features[0]){
+        const p=j.features[0].properties||{};
+        const name=p.name||p.street||p.locality||"Pinned location";
+        const sub=[p.locality||p.district,p.city].filter(Boolean).filter(x=>x!==name).join(", ");
+        return sub?`${name}, ${sub}`:name;
+      }
+    }
+  }catch(e){}
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=18&lat=${lat}&lon=${lng}`);
+    const j=await r.json();
+    return j.display_name?short(j.display_name,3):"Pinned location";
+  }catch(e){return "Pinned location";}
+}
+async function searchPlaces(q){
+  if(!q||q.trim().length<2)return[];
+  const c=S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
+  try{
+    const r=await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${MAPBOX_TOKEN}&proximity=${c.lng},${c.lat}&country=in&limit=8`);
+    if(r.ok){
+      const data=await r.json();
+      if(data&&data.features&&data.features.length){
+        return data.features.map(f=>{
+          const text=f.text||f.place_name.split(",")[0];
+          const sub=f.place_name.split(",").slice(1,4).join(", ").trim();
+          return {
+            lat:f.center[1],
+            lng:f.center[0],
+            label:sub?`${text}, ${sub}`:text
+          };
+        });
+      }
+    }
+  }catch(e){}
+  try{
+    const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lat=${c.lat}&lon=${c.lng}&limit=8`);
+    if(r.ok){
+      const data=await r.json();
+      if(data&&data.features&&data.features.length){
+        return data.features.map(f=>{
+          const p=f.properties||{};
+          const name=p.name||p.street||p.locality||p.district||"Location";
+          const sub=[p.street,p.locality||p.district,p.city||p.county,p.state].filter(Boolean).filter(x=>x!==name).slice(0,3).join(", ");
+          return {lat:f.geometry.coordinates[1],lng:f.geometry.coordinates[0],label:sub?`${name}, ${sub}`:name};
+        });
+      }
+    }
+  }catch(e){}
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=8&countrycodes=in&q=${encodeURIComponent(q)}`);
+    if(r.ok){
+      const j=await r.json();
+      if(j&&j.length)return j.map(x=>({lat:+x.lat,lng:+x.lon,label:short(x.display_name,4)}));
+    }
+  }catch(e){}
+  return [];
+}
+
+let revT,revTok=0;
+function debRev(p,key){
+  clearTimeout(revT); const tok=++revTok;
+  revT=setTimeout(async()=>{
+    const label=await reverse(p.lat,p.lng);
+    if(tok!==revTok)return;
+    if(key==="pickup"&&S.pickup){S.pickup.label=label;$("pickupText").textContent=label;$("inFrom").value=label;}
+    if(key==="temp"&&S.temp){S.temp.label=label;$("pickAddr").textContent=label;}
+  },500);
+}
+
+map.on("moveend",()=>{
+  if(Date.now()<muteUntil)return;
+  const p=pinLL();
+  if(S.stage==="home"){
+    S.pickup={lat:p.lat,lng:p.lng,label:"Locating…"};
+    $("pickupText").textContent="Locating…"; debRev(p,"pickup");
+  }else if(S.stage==="pick"){
+    S.temp={lat:p.lat,lng:p.lng,label:"Locating…"};
+    $("pickAddr").textContent="Locating…"; debRev(p,"temp");
+  }
+});
+
+// ================= CURRENT LOCATION =================
+async function setPickup(lat,lng,label,move){
+  S.pickup={lat,lng,label:label||"Locating…"};
+  $("pickupText").textContent=S.pickup.label; $("inFrom").value=label||"";
+  if(move)goTo(lat,lng,16);
+  if(!label){
+    const l=await reverse(lat,lng);
+    if(S.pickup&&S.pickup.lat===lat&&S.pickup.lng===lng){S.pickup.label=l;$("pickupText").textContent=l;$("inFrom").value=l;}
+  }
+}
+function locate(cb){
+  const fallback=()=>{if(!S.pickup||S.pickup.label==="Locating…")setPickup(DEFAULT[0],DEFAULT[1],null,true);if(cb)cb();};
+  if(!navigator.geolocation)return fallback();
+  navigator.geolocation.getCurrentPosition(
+    async p=>{await setPickup(p.coords.latitude,p.coords.longitude,null,true);if(cb)cb();},
+    fallback,{enableHighAccuracy:true,timeout:10000});
+}
+$("locBtn").onclick=()=>locate();
+$("curBtn").onclick=()=>locate(()=>{$("inTo").focus();});
+
+// ================= RECENTS + SUGGESTIONS =================
+function recents(){try{return JSON.parse(localStorage.getItem("rc")||"[]")}catch(e){return[]}}
+function saveRecent(p){try{const l=recents().filter(x=>x.label!==p.label);l.unshift(p);localStorage.setItem("rc",JSON.stringify(l.slice(0,6)))}catch(e){}}
+function renderList(el,list){
+  sug=list;
+  const isRecent=el.id==="homeRecents";
+  const icon=isRecent?"history":"place";
+  const iconColor=isRecent?"#888":"#FFC61A";
+  const from=S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
+  el.innerHTML=list.map((p,i)=>{
+    const parts=p.label.split(",");
+    return `<div class="item" data-i="${i}"><div class="km"><span class="material-icons" style="font-size:20px;color:${iconColor}">${icon}</span><br>${km(from,p).toFixed(1)} km</div>
+      <div><div class="nm">${esc(parts[0])}</div><div class="ad">${esc(parts.slice(1).join(","))}</div></div></div>`;
+  }).join("");
+  el.querySelectorAll(".item").forEach(it=>it.onclick=()=>choose(sug[+it.dataset.i],el.id==="homeRecents"?"to":null));
+}
+function renderRecents(){renderList($("homeRecents"),recents());}
+
+function choose(p,which){
+  const w=which||S.active;
+  if(w==="from"){
+    S.pickup={...p}; $("pickupText").textContent=p.label; $("inFrom").value=p.label;
+    goTo(p.lat,p.lng,16);
+    if(S.drop){startBooking();}else{S.active="to";$("inTo").focus();}
+    return;
+  }
+  S.drop={...p}; saveRecent(p); $("inTo").value=p.label;
+  startBooking();
+}
+
+// ================= SEARCH SCREEN =================
+function openSearch(active){
+  S.active=active; show("search");
+  $("inFrom").value=S.pickup?S.pickup.label:"";
+  $("inTo").value=S.drop?S.drop.label:"";
+  renderList($("sugg"),recents());
+  $(active==="from"?"inFrom":"inTo").focus();
+}
+$("whereBtn").onclick=()=>openSearch("to");
+$("pickupPill").onclick=()=>openSearch("from");
+$("searchBack").onclick=()=>{show("home");if(S.pickup)goTo(S.pickup.lat,S.pickup.lng,16);renderRecents();};
+$("inFrom").onfocus=()=>S.active="from";
+$("inTo").onfocus=()=>S.active="to";
+async function onType(which,q){
+  S.active=which;
+  if(q.trim().length<2){renderList($("sugg"),recents());return;}
+  const res=await searchPlaces(q);
+  if(S.active===which)renderList($("sugg"),res);
+}
+$("inFrom").addEventListener("input",debounce(e=>onType("from",e.target.value),350));
+$("inTo").addEventListener("input",debounce(e=>onType("to",e.target.value),350));
+
+// ================= SELECT FROM MAP =================
+$("selMap").onclick=()=>{
+  const target=S.active==="from"?"pickup":"drop";
+  const base=target==="drop"&&S.drop?S.drop:S.pickup||{lat:DEFAULT[0],lng:DEFAULT[1]};
+  show("pick",target);
+  goTo(base.lat,base.lng,16);
+  S.temp={lat:base.lat,lng:base.lng,label:base.label||"Locating…"};
+  $("pickAddr").textContent=S.temp.label; debRev(base,"temp");
+};
+$("pickBack").onclick=()=>show("search");
+$("pickOk").onclick=()=>{
+  if(!S.temp)return;
+  const p={...S.temp};
+  if(S.target==="pickup"){
+    S.pickup=p;$("pickupText").textContent=p.label;$("inFrom").value=p.label;
+    if(S.drop)startBooking(); else {show("search");S.active="to";$("inTo").value="";$("inTo").focus();}
+  }else{
+    S.drop=p;saveRecent(p);$("inTo").value=p.label;startBooking();
+  }
+};
+
+// ================= PRICING (traffic + weather + festival, all hidden) =================
+const V=[
+  {id:"bike", name:"Bike",        short:"Bike",  icon:"two_wheeler",       seats:1,eta:3,base:20,perKm:8, perMin:.5},
+  {id:"auto", name:"Auto",        short:"Auto",  icon:"electric_rickshaw", seats:3,eta:4,base:25,perKm:10,perMin:.8},
+  {id:"eco",  name:"Cab Economy", short:"Cab",   icon:"local_taxi",        seats:4,eta:5,base:30,perKm:12,perMin:1},
+  {id:"sedan",name:"Car Sedan",   short:"Sedan", icon:"directions_car",    seats:4,eta:6,base:40,perKm:14,perMin:1.2},
+  {id:"suv",  name:"Car SUV",     short:"SUV",   icon:"airport_shuttle",   seats:6,eta:7,base:55,perKm:18,perMin:1.5}
+];
+const FESTIVALS=["01-14","03-14","08-15","10-20","11-08","12-25"]; // MM-DD – edit as needed
+async function computeSurge(lat,lng){
+  let s=1;
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=precipitation`);
+    const j=await r.json();
+    if((j.current&&j.current.precipitation)>.1)s*=1.2;     // rain (hidden)
+  }catch(e){}
+  const d=new Date(),k=String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  if(FESTIVALS.includes(k))s*=1.3;                           // festival (hidden)
+  return s;
+}
+function trafficFactor(){                                    // traffic estimate (hidden)
+  const d=new Date(), h=d.getHours()+d.getMinutes()/60, wd=d.getDay()>0&&d.getDay()<6;
+  if(wd&&((h>=8&&h<11)||(h>=17&&h<21))) return 1.3;
+  if(!wd&&h>=17&&h<22) return 1.15;
+  if(wd&&h>=11&&h<17) return 1.05;
+  return 1;
+}
+const fare=v=>Math.round((v.base+v.perKm*S.dist+v.perMin*S.dur)*S.surge);
+
+function renderVehicles(){
+  $("vList").innerHTML=V.map(v=>`
+    <div class="vrow ${v.id===S.vehicle?"on":""}" data-v="${v.id}">
+      <div class="ic"><span class="material-icons">${v.icon}</span></div>
+      <div class="mid"><div class="vn">${v.name}</div>
+        <div class="sub">${v.eta} min away • ${S.route?"Drop in ~"+Math.round(v.eta+S.dur)+" mins":"Drop in --"} • <span class="material-icons" style="font-size:13px;vertical-align:-2px">person</span>${v.seats} Seats</div></div>
+      <div class="pr">${S.route?"₹"+fare(v):"…"}</div>
+    </div>`).join("");
+  document.querySelectorAll(".vrow").forEach(el=>el.onclick=()=>{S.vehicle=el.dataset.v;renderVehicles();});
+  const v=V.find(x=>x.id===S.vehicle);
+  $("goBtn").textContent=S.mode==="passenger"?"Book "+v.short:"Find passengers · "+v.short;
+}
+
+// ================= BOOKING / ROUTE =================
+function clearRoute(){
+  if(routeLine){map.removeLayer(routeLine);routeLine=null;}
+  Object.values(markers).forEach(m=>map.removeLayer(m)); markers={};
+  stopAll(); S.route=null;
+}
+async function startBooking(){
+  clearRoute(); show("book");
+  $("vehicleView").style.display="block"; $("matchView").style.display="none";
+  const tok=++bookTok, a=S.pickup, b=S.drop;
+  renderVehicles(); refreshOpts();
+  markers.a=L.marker([a.lat,a.lng],{icon:L.divIcon({className:"",html:'<div class="mk"></div>',iconSize:[22,22],iconAnchor:[11,11]})}).addTo(map);
+  markers.b=L.marker([b.lat,b.lng],{icon:L.divIcon({className:"",html:'<span class="material-icons" style="color:#e53935;font-size:40px;display:block;line-height:40px">place</span>',iconSize:[40,40],iconAnchor:[20,38]})}).addTo(map);
+  muteUntil=Date.now()+800;
+  map.fitBounds([[a.lat,a.lng],[b.lat,b.lng]],{paddingTopLeft:[50,90],paddingBottomRight:[50,$("bookSheet").offsetHeight+30],animate:false});
+
+  let coords,dist,dur;
+  try{
+    const r=await fetch(`https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`);
+    const j=await r.json(); const rt=j.routes[0];
+    coords=rt.geometry.coordinates.map(c=>[c[1],c[0]]); dist=rt.distance/1000; dur=rt.duration/60;
+  }catch(e){
+    dist=km(a,b)*1.3; dur=dist/25*60; coords=[[a.lat,a.lng],[b.lat,b.lng]];
+  }
+  if(tok!==bookTok)return;
+  const surge=await computeSurge(a.lat,a.lng);
+  if(tok!==bookTok)return;
+  S.route=coords; S.dist=dist; S.dur=dur*trafficFactor(); S.surge=surge;
+  routeLine=L.polyline(coords,{color:"#d0d0d0",weight:5}).addTo(map);   // route line only, no corridor
+  muteUntil=Date.now()+800;
+  map.fitBounds(routeLine.getBounds(),{paddingTopLeft:[50,90],paddingBottomRight:[50,$("bookSheet").offsetHeight+30],animate:false});
+  renderVehicles();
+}
+$("bookBack").onclick=()=>{clearRoute();openSearch("to");};
+
+// ================= MODES + OPTIONS =================
+function setMode(m){
+  S.mode=m;
+  $("mPass").classList.toggle("on",m==="passenger");
+  $("mRider").classList.toggle("on",m==="rider");
+}
+$("mPass").onclick=()=>setMode("passenger");
+$("mRider").onclick=()=>setMode("rider");
+function refreshOpts(){
+  $("femWrap").style.display=(S.mode==="passenger"&&$("myGender").value==="female")?"inline":"none";
+  renderVehicles();
+}
+$("myGender").onchange=refreshOpts;
+
+// ================= REAL MATCHING (server) =================
+const CID=(()=>{try{let c=sessionStorage.getItem("cid");if(!c){c="u"+Math.random().toString(36).slice(2,10);sessionStorage.setItem("cid",c)}return c}catch(e){return "u"+Math.random().toString(36).slice(2,10)}})();
+function myName(){
+  let n=null; try{n=sessionStorage.getItem("nm")}catch(e){}
+  if(!n){n=prompt("Your name?")||"User"; try{sessionStorage.setItem("nm",n)}catch(e){}}
+  return n;
+}
+const api=(p,body)=>fetch("/api/"+p,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}:undefined).then(r=>r.json());
+const FORCE_SIM=location.search.includes("sim");   // open /?sim=1 to simulate movement along the route
+let poll=null, watchId=null, sim=null, sharing=false, listed=false, partnerMarkers={};
+const thin=r=>{const s=Math.ceil(r.length/200);return r.filter((_,i)=>i%s===0||i===r.length-1);};
+
+$("goBtn").onclick=async()=>{
+  if(!S.route)return;
+  stopAll();
+  const me=$("myGender").value;
+  await api("listing",{clientId:CID,name:myName(),role:S.mode,gender:me,vehicle:S.vehicle,
+    femaleOnly:S.mode==="passenger"&&me==="female"&&$("femaleOnly").checked,
+    pickup:{lat:S.pickup.lat,lng:S.pickup.lng},drop:{lat:S.drop.lat,lng:S.drop.lng},route:thin(S.route)});
+  listed=true;
+  $("vehicleView").style.display="none"; $("matchView").style.display="block";
+  $("matchTitle").textContent=S.mode==="passenger"?"Riders on your route":"Passengers on your route";
+  $("results").innerHTML='<div class="card">Looking for matches on your route…</div>';
+  refreshMatches(); poll=setInterval(refreshMatches,3000);
+};
+
+async function refreshMatches(){
+  try{
+    const [m,ib,rd]=await Promise.all([api("matches?clientId="+CID),api("inbox?clientId="+CID),api("ride?clientId="+CID)]);
+    let h="";
+    if(rd.partners.length){
+      h+=`<div class="card"><div class="live">Ride confirmed · live location shared with ${rd.partners.map(p=>esc(p.name)).join(", ")}</div></div>`;
+      shareLocation(); drawPartners(rd.partners);
+    }
+    if(S.mode==="rider"){
+      h+=ib.requests.map(r=>`<div class="card"><b>${esc(r.passengerName)}</b> · ${r.passengerGender} wants to ride with you
+        <div><button onclick="respond(${r.id},true)">Accept passenger</button>
+        <button style="background:#333;color:#fff" onclick="respond(${r.id},false)">Decline</button></div></div>`).join("");
+      const open=m.matches.filter(x=>x.status!=="accepted").length;
+      h+=`<div class="card">${open} passenger(s) on your route${open?"":" · waiting for passengers"}.</div>`;
+    }else{
+      h+=m.matches.map(x=>{
+        const occ=x.vehicle==="bike"?"Bike · no other passengers":(x.inside.length?`Already inside: ${x.inside.length} (${x.inside.join(", ")})`:"Vehicle empty");
+        const btn=x.status==="accepted"?"Accepted":x.status==="pending"?"Waiting for rider…":x.status==="rejected"?"Declined":"Request ride";
+        const dis=x.status?" disabled":"";
+        return `<div class="card"><b>${esc(x.name)}</b> · ${x.gender}<br>Same route · ${V.find(v=>v.id===x.vehicle).short}<br>${occ}
+          <div><button${dis} onclick="sendReq('${x.id}')">${btn}</button></div></div>`;
+      }).join("");
+    }
+    $("results").innerHTML=h||'<div class="card">No matches on your route yet. Keep this screen open.</div>';
+  }catch(e){}
+}
+async function sendReq(id){await api("request",{clientId:CID,targetId:id});refreshMatches();}
+async function respond(id,ok){await api("respond",{clientId:CID,requestId:id,accept:ok});refreshMatches();}
+
+function shareLocation(){
+  if(sharing)return; sharing=true;
+  const send=(lat,lng)=>api("location",{clientId:CID,lat,lng});
+  if(FORCE_SIM||!navigator.geolocation)return simulate(send);
+  watchId=navigator.geolocation.watchPosition(p=>send(p.coords.latitude,p.coords.longitude),()=>simulate(send),{enableHighAccuracy:true});
+}
+function simulate(send){
+  if(sim||!S.route)return;
+  let i=0; const step=Math.max(1,Math.floor(S.route.length/60));
+  sim=setInterval(()=>{i=Math.min(i+step,S.route.length-1);send(S.route[i][0],S.route[i][1]);},2000);
+}
+function drawPartners(ps){
+  ps.forEach(p=>{
+    if(!p.loc)return;
+    if(!partnerMarkers[p.id])partnerMarkers[p.id]=L.circleMarker([p.loc.lat,p.loc.lng],{radius:9,color:"#fff",weight:3,fillColor:"#1a73e8",fillOpacity:1}).addTo(map);
+    else partnerMarkers[p.id].setLatLng([p.loc.lat,p.loc.lng]);
+  });
+}
+function stopAll(){
+  if(poll){clearInterval(poll);poll=null}
+  if(sim){clearInterval(sim);sim=null}
+  if(watchId!==null){navigator.geolocation.clearWatch(watchId);watchId=null}
+  Object.values(partnerMarkers).forEach(m=>map.removeLayer(m)); partnerMarkers={};
+  sharing=false;
+  if(listed){listed=false;api("cancel",{clientId:CID}).catch(()=>{});}
+}
+$("matchBack").onclick=()=>{stopAll();$("matchView").style.display="none";$("vehicleView").style.display="block";};
+window.addEventListener("pagehide",()=>{try{navigator.sendBeacon("/api/cancel",new Blob([JSON.stringify({clientId:CID})],{type:"application/json"}))}catch(e){}});
+
+// ================= START =================
+show("home"); renderRecents(); setMode("passenger");
+locate();
+</script>
+</body>
+</html>
