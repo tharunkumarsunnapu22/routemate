@@ -5,8 +5,116 @@ const crypto = require("crypto");
 
 // ---------- CONFIG ----------
 const PORT = 5000;
-const DEMO_OTP = true;          // true: OTP is shown on screen + printed in this console (no SMS gateway connected)
 const AUTO_APPROVE_DOCS = true; // true: documents are auto-marked verified (demo). Real KYC needs a verification provider.
+
+// ---------- SMS GATEWAY CONFIGURATION ----------
+const SMS_CONFIG_FILE = path.join(__dirname, "sms_config.json");
+let smsConfig = {};
+try {
+  if (fs.existsSync(SMS_CONFIG_FILE)) {
+    smsConfig = JSON.parse(fs.readFileSync(SMS_CONFIG_FILE, "utf8"));
+  }
+} catch (e) {
+  console.warn("Could not read sms_config.json:", e.message);
+}
+
+// Send real SMS OTP to the user's mobile number
+async function sendRealSms(phone, otp) {
+  // 1. Fast2SMS (India - DLT-free OTP route)
+  const fast2smsKey = process.env.FAST2SMS_API_KEY || smsConfig.fast2sms_api_key;
+  if (fast2smsKey && fast2smsKey.trim()) {
+    try {
+      console.log(`[SMS Gateway] Sending real SMS OTP to +91 ${phone} via Fast2SMS...`);
+      const resp = await fetch("https://www.fast2sms.com/dev/bulkV2", {
+        method: "POST",
+        headers: {
+          "authorization": fast2smsKey.trim(),
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          route: "otp",
+          variables_values: String(otp),
+          numbers: String(phone)
+        })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (data.return) {
+        console.log(`[SMS Gateway] Fast2SMS delivered successfully to ${phone}!`);
+        return { success: true, provider: "Fast2SMS", message: data.message };
+      } else {
+        console.warn(`[SMS Gateway] Fast2SMS returned error:`, data);
+        return { success: false, error: data.message || "Fast2SMS error" };
+      }
+    } catch (err) {
+      console.error(`[SMS Gateway] Fast2SMS network error:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // 2. 2Factor.in (India dedicated OTP SMS)
+  const twoFactorKey = process.env.TWO_FACTOR_API_KEY || smsConfig.two_factor_api_key;
+  if (twoFactorKey && twoFactorKey.trim()) {
+    try {
+      console.log(`[SMS Gateway] Sending real SMS OTP to +91 ${phone} via 2Factor...`);
+      const resp = await fetch(`https://2factor.in/v3/API/V1/${encodeURIComponent(twoFactorKey.trim())}/SMS/${encodeURIComponent(phone)}/${encodeURIComponent(otp)}/RouteMate`);
+      const data = await resp.json().catch(() => ({}));
+      if (data.Status === "Success") {
+        console.log(`[SMS Gateway] 2Factor SMS sent successfully to ${phone}!`);
+        return { success: true, provider: "2Factor" };
+      } else {
+        console.warn(`[SMS Gateway] 2Factor returned:`, data);
+        return { success: false, error: data.Details || "2Factor error" };
+      }
+    } catch (err) {
+      console.error(`[SMS Gateway] 2Factor network error:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // 3. Twilio (Global & India)
+  const twilio = smsConfig.twilio || {};
+  const twilioSid = process.env.TWILIO_ACCOUNT_SID || twilio.account_sid;
+  const twilioToken = process.env.TWILIO_AUTH_TOKEN || twilio.auth_token;
+  const twilioFrom = process.env.TWILIO_FROM_PHONE || twilio.from_phone;
+  if (twilioSid && twilioToken && twilioFrom) {
+    try {
+      console.log(`[SMS Gateway] Sending real SMS OTP to +91 ${phone} via Twilio...`);
+      const auth = Buffer.from(`${twilioSid.trim()}:${twilioToken.trim()}`).toString("base64");
+      const body = new URLSearchParams({
+        To: phone.startsWith("+") ? phone : `+91${phone}`,
+        From: twilioFrom.trim(),
+        Body: `Your RouteMate verification OTP is ${otp}. Valid for 5 minutes.`
+      });
+      const resp = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(twilioSid.trim())}/Messages.json`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: body.toString()
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (data.sid) {
+        console.log(`[SMS Gateway] Twilio SMS dispatched with SID ${data.sid}`);
+        return { success: true, provider: "Twilio" };
+      } else {
+        console.warn(`[SMS Gateway] Twilio error:`, data);
+        return { success: false, error: data.message || "Twilio error" };
+      }
+    } catch (err) {
+      console.error(`[SMS Gateway] Twilio network error:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Notice: If no external SMS gateway key is configured in sms_config.json, log for developer
+  console.log(`================================================================`);
+  console.log(`[SMS Gateway] OTP generated for +91 ${phone}: ${otp}`);
+  console.log(`[SMS Gateway] To receive real SMS directly on your phone, paste your`);
+  console.log(`              Fast2SMS API key in sms_config.json`);
+  console.log(`================================================================`);
+  return { success: false, simulated: true };
+}
 
 const app = express();
 app.use(express.json({ limit: "8mb" }));
@@ -81,30 +189,37 @@ const auth = (req, res, next) => {
   req.phone = ph; req.user = db.users[ph]; next();
 };
 
-app.post("/api/auth/send", (req, res) => {
-  const phone = String((req.body || {}).phone || "");
+app.post("/api/auth/send", async (req, res) => {
+  const phone = String((req.body || {}).phone || "").trim();
   if (!/^[6-9]\d{9}$/.test(phone)) return res.status(400).json({ error: "Enter a valid 10-digit mobile number" });
   const code = String(crypto.randomInt(100000, 1000000));
   otps.set(phone, { code, exp: Date.now() + 5 * 60 * 1000, tries: 0 });
-  console.log(`OTP for ${phone}: ${code}`);
-  res.json({ ok: true, demoOtp: DEMO_OTP ? code : undefined });
+  
+  await sendRealSms(phone, code);
+
+  // Strictly return only confirmation; never leak the OTP to the browser!
+  res.json({ ok: true, message: `OTP sent via SMS to +91 ${phone}` });
 });
 
 app.post("/api/auth/verify", (req, res) => {
   const { phone, code, name } = req.body || {};
-  const o = otps.get(String(phone));
-  if (!o || Date.now() > o.exp) return res.status(400).json({ error: "OTP expired. Go back and request a new one." });
-  if (++o.tries > 5) { otps.delete(String(phone)); return res.status(429).json({ error: "Too many attempts. Request a new OTP." }); }
-  if (String(code) !== o.code) return res.status(400).json({ error: "Wrong OTP" });
-  let u = db.users[phone];
+  const cleanPhone = String(phone || "").trim();
+  const cleanCode = String(code || "").trim();
+
+  const o = otps.get(cleanPhone);
+  if (!o || Date.now() > o.exp) return res.status(400).json({ error: "OTP expired. Please go back and request a new one." });
+  if (++o.tries > 5) { otps.delete(cleanPhone); return res.status(429).json({ error: "Too many attempts. Request a new OTP." }); }
+  if (cleanCode !== o.code) return res.status(400).json({ error: "Incorrect OTP. Please enter the valid code sent to your phone." });
+  
+  let u = db.users[cleanPhone];
   if (!u) {
     const nm = String(name || "").trim().slice(0, 30);
     if (!nm) return res.json({ needName: true });
-    u = db.users[phone] = { phone, name: nm, createdAt: Date.now(), doc: null };   // new number => rider documents will be asked
+    u = db.users[cleanPhone] = { phone: cleanPhone, name: nm, createdAt: Date.now(), doc: null };   // new number => rider documents will be asked
   }
-  otps.delete(String(phone));
+  otps.delete(cleanPhone);
   const token = crypto.randomBytes(24).toString("hex");
-  db.sessions[token] = phone;
+  db.sessions[token] = cleanPhone;
   save();
   res.json({ token, user: publicUser(u) });
 });

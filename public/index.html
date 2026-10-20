@@ -356,17 +356,17 @@ h2{
   <div class="logo">RouteMate</div>
   <p class="muted">Fast, secure ride pooling in your city</p>
   <div id="stepPhone">
-    <input class="inp" id="phone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number">
-    <button class="go" id="sendOtp">Get OTP</button>
+    <input class="inp" id="phone" inputmode="numeric" maxlength="10" placeholder="Enter 10-digit mobile number">
+    <button class="go" id="sendOtp">Get OTP via SMS</button>
   </div>
   <div id="stepOtp" style="display:none">
-    <input class="inp" id="otp" inputmode="numeric" maxlength="6" placeholder="Enter OTP">
-    <div class="muted" id="demoHint"></div>
-    <input class="inp" id="nameIn" placeholder="Your name" style="display:none">
-    <button class="go" id="verifyOtp">Verify &amp; continue</button>
+    <div class="muted" id="smsNotice" style="color:#fecdd3;font-weight:600;margin-bottom:12px"></div>
+    <input class="inp" id="otp" inputmode="numeric" maxlength="6" placeholder="Enter 6-digit SMS OTP">
+    <input class="inp" id="nameIn" placeholder="Enter your full name" style="display:none">
+    <button class="go" id="verifyOtp">Verify OTP &amp; Continue</button>
     <div class="link" id="changeNum">Change number</div>
   </div>
-  <div class="err" id="loginErr"></div>
+  <div class="err" id="loginErr" style="color:#fb7185;font-weight:700;font-size:14px;margin-top:12px;text-align:center"></div>
 </div>
 
 <!-- 2. RIDER VERIFICATION -->
@@ -917,22 +917,45 @@ document.querySelectorAll("#paySeg button").forEach(b=>b.onclick=()=>{
 $("sendOtp").onclick=async()=>{
   const ph=$("phone").value.trim(); $("loginErr").textContent="";
   if(!/^[6-9]\d{9}$/.test(ph)){$("loginErr").textContent="Enter a valid 10-digit mobile number";return;}
+  $("sendOtp").disabled=true; $("sendOtp").textContent="Sending SMS…";
   try{
-    const j=await api("auth/send",{phone:ph});
+    await api("auth/send",{phone:ph});
     S.loginPhone=ph; $("stepPhone").style.display="none"; $("stepOtp").style.display="block";
-    $("demoHint").innerHTML=j.demoOtp?`Demo OTP: <b style="color:var(--accent)">${j.demoOtp}</b>`:"OTP sent to +91 "+ph;
-  }catch(e){$("loginErr").textContent=e.message}
+    $("smsNotice").textContent="SMS verification code sent to +91 "+ph;
+    $("otp").value=""; $("loginErr").textContent="";
+  }catch(e){
+    $("loginErr").textContent=e.message||"Failed to send SMS OTP";
+  }finally{
+    $("sendOtp").disabled=false; $("sendOtp").textContent="Get OTP via SMS";
+  }
 };
 $("verifyOtp").onclick=async()=>{
   $("loginErr").textContent="";
+  const code=$("otp").value.trim();
+  if(!code||code.length<4){
+    $("loginErr").textContent="Please enter the OTP received on your mobile";
+    return;
+  }
+  $("verifyOtp").disabled=true; $("verifyOtp").textContent="Verifying…";
   try{
-    const j=await api("auth/verify",{phone:S.loginPhone,code:$("otp").value.trim(),name:$("nameIn").value});
-    if(j.needName){$("nameIn").style.display="block";$("loginErr").textContent="New number — enter your name to continue";return;}
+    const j=await api("auth/verify",{phone:S.loginPhone,code:code,name:$("nameIn").value});
+    if(j.needName){
+      $("nameIn").style.display="block";
+      $("loginErr").textContent="First time logging in? Enter your name and click Verify to continue";
+      $("verifyOtp").disabled=false; $("verifyOtp").textContent="Verify & Continue";
+      return;
+    }
     S.token=j.token; try{localStorage.setItem("rt",j.token)}catch(e){}
     await enterApp();
-  }catch(e){$("loginErr").textContent=e.message}
+  }catch(e){
+    $("loginErr").textContent=e.message||"Incorrect OTP. Please check your SMS and try again.";
+  }finally{
+    $("verifyOtp").disabled=false; $("verifyOtp").textContent="Verify OTP & Continue";
+  }
 };
-$("changeNum").onclick=()=>{$("stepOtp").style.display="none";$("stepPhone").style.display="block";$("otp").value="";$("nameIn").style.display="none";$("loginErr").textContent="";};
+$("changeNum").onclick=()=>{
+  $("stepOtp").style.display="none";$("stepPhone").style.display="block";$("otp").value="";$("nameIn").style.display="none";$("loginErr").textContent="";
+};
 
 let tickT=null;
 function forceLogout(){

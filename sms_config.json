@@ -1,0 +1,11 @@
+{
+  "_comment": "Add your SMS Gateway API key here to receive real SMS directly on your phone. Supported: Fast2SMS, 2Factor, Twilio",
+  "provider": "fast2sms",
+  "fast2sms_api_key": "",
+  "two_factor_api_key": "",
+  "twilio": {
+    "account_sid": "",
+    "auth_token": "",
+    "from_phone": ""
+  }
+}
