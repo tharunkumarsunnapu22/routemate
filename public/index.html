@@ -919,10 +919,16 @@ $("sendOtp").onclick=async()=>{
   if(!/^[6-9]\d{9}$/.test(ph)){$("loginErr").textContent="Enter a valid 10-digit mobile number";return;}
   $("sendOtp").disabled=true; $("sendOtp").textContent="Sending SMS…";
   try{
-    await api("auth/send",{phone:ph});
+    const j=await api("auth/send",{phone:ph});
     S.loginPhone=ph; $("stepPhone").style.display="none"; $("stepOtp").style.display="block";
-    $("smsNotice").textContent="SMS verification code sent to +91 "+ph;
-    $("otp").value=""; $("loginErr").textContent="";
+    if(j.demoOtp){
+      $("smsNotice").innerHTML=`Demo Mode: Your OTP is <b style="color:var(--accent);font-size:16px">${j.demoOtp}</b>`;
+      $("otp").value=j.demoOtp;
+    }else{
+      $("smsNotice").textContent="SMS verification code sent to +91 "+ph;
+      $("otp").value="";
+    }
+    $("loginErr").textContent="";
   }catch(e){
     $("loginErr").textContent=e.message||"Failed to send SMS OTP";
   }finally{
