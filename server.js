@@ -8,12 +8,19 @@ const crypto = require("crypto");
 const PORT = process.env.PORT || 5000;
 const DEMO_OTP = process.env.DEMO_OTP === "true";   // true: OTP shown on screen (testing only, no SMS)
 const AUTO_APPROVE_DOCS = true;                      // true: documents are auto-marked verified (demo)
+const FAST2SMS_KEY = process.env.FAST2SMS_KEY || "";
+if (!FAST2SMS_KEY && !DEMO_OTP) console.warn("WARNING: FAST2SMS_KEY missing in .env - OTP login will not work. Set it or use DEMO_OTP=true for testing.");
 
-const HAS_SMS = !!(process.env.TWILIO_SID && process.env.TWILIO_TOKEN && process.env.TWILIO_VERIFY_SID);
-const verifySvc = HAS_SMS
-  ? require("twilio")(process.env.TWILIO_SID, process.env.TWILIO_TOKEN).verify.v2.services(process.env.TWILIO_VERIFY_SID)
-  : null;
-if (!HAS_SMS && !DEMO_OTP) console.warn("WARNING: Twilio keys missing in .env - OTP login will not work. Set them or use DEMO_OTP=true for testing.");
+// Sends the OTP SMS through Fast2SMS (needs Node 18+ for fetch)
+async function sendOtpSms(phone, code) {
+  const url = "https://www.fast2sms.com/dev/bulkV2?" + new URLSearchParams({
+    route: "otp", variables_values: code, flash: "0", numbers: phone
+  });
+  const r = await fetch(url, { headers: { authorization: FAST2SMS_KEY } });
+  const j = await r.json().catch(() => ({}));
+  console.log("Fast2SMS response:", JSON.stringify(j));
+  if (!j.return) throw new Error(JSON.stringify(j));
+}
 
 const app = express();
 app.use(express.json({ limit: "8mb" }));
@@ -37,9 +44,9 @@ const requests = new Map();          // id -> ride request
 const locs = new Map();              // phone -> {lat,lng}
 const notifs = {};                   // phone -> [{id,text,kind,t}]
 const notified = new Set();          // "riderPhone|passengerPhone"
-const otps = new Map();              // phone -> {code,exp,tries}   (demo mode only)
+const otps = new Map();              // phone -> {code,exp,tries}
 const sendLog = new Map();           // phone -> [timestamps of OTP requests]
-const verifiedPhones = new Map();    // phone -> expiry (OTP already approved, waiting for name of new user)
+const verifiedPhones = new Map();    // phone -> expiry (OTP approved, waiting for name of new user)
 let seq = 1, nseq = 1;
 
 const ref = ph => crypto.createHash("sha1").update("ride" + ph).digest("hex").slice(0, 10);
@@ -90,7 +97,7 @@ const auth = (req, res, next) => {
   req.phone = ph; req.user = db.users[ph]; next();
 };
 
-// ----- SEND OTP (real SMS via Twilio Verify) -----
+// ----- SEND OTP (real SMS via Fast2SMS) -----
 app.post("/api/auth/send", async (req, res) => {
   const phone = String((req.body || {}).phone || "");
   if (!/^[6-9]\d{9}$/.test(phone)) return res.status(400).json({ error: "Enter a valid 10-digit mobile number" });
@@ -102,24 +109,27 @@ app.post("/api/auth/send", async (req, res) => {
   log.push(now); sendLog.set(phone, log);
   verifiedPhones.delete(phone);
 
+  const code = String(crypto.randomInt(100000, 1000000));
+
   if (DEMO_OTP) {
-    const code = String(crypto.randomInt(100000, 1000000));
     otps.set(phone, { code, exp: now + 5 * 60 * 1000, tries: 0 });
     console.log(`DEMO OTP for ${phone}: ${code}`);
     return res.json({ ok: true, demoOtp: code });
   }
-  if (!verifySvc) return res.status(500).json({ error: "SMS service is not configured" });
+  if (!FAST2SMS_KEY) return res.status(500).json({ error: "SMS service is not configured" });
   try {
-    await verifySvc.verifications.create({ to: "+91" + phone, channel: "sms" });
+    await sendOtpSms(phone, code);
+    otps.set(phone, { code, exp: now + 5 * 60 * 1000, tries: 0 });
     res.json({ ok: true });
   } catch (e) {
-    console.error("Twilio send error:", e.message);
+    console.error("Fast2SMS error:", e.message);
+    sendLog.set(phone, log.slice(0, -1));   // failed send does not count toward the limit
     res.status(500).json({ error: "Could not send OTP. Please try again." });
   }
 });
 
 // ----- VERIFY OTP -----
-app.post("/api/auth/verify", async (req, res) => {
+app.post("/api/auth/verify", (req, res) => {
   const { phone, code, name } = req.body || {};
   const ph = String(phone || "");
   if (!/^[6-9]\d{9}$/.test(ph)) return res.status(400).json({ error: "Enter a valid 10-digit mobile number" });
@@ -127,27 +137,11 @@ app.post("/api/auth/verify", async (req, res) => {
   const alreadyOk = (verifiedPhones.get(ph) || 0) > Date.now();   // OTP approved earlier, new user is now sending name
   if (!alreadyOk) {
     const c = String(code || "").trim();
-    if (!/^\d{4,8}$/.test(c)) return res.status(400).json({ error: "Incorrect OTP" });
-    try {
-      let ok = false;
-      if (DEMO_OTP) {
-        const o = otps.get(ph);
-        if (!o || Date.now() > o.exp) return res.status(400).json({ error: "OTP expired. Go back and request a new one." });
-        if (++o.tries > 5) { otps.delete(ph); return res.status(429).json({ error: "Too many attempts. Request a new OTP." }); }
-        ok = c === o.code;
-        if (ok) otps.delete(ph);
-      } else {
-        if (!verifySvc) return res.status(500).json({ error: "SMS service is not configured" });
-        const r = await verifySvc.verificationChecks.create({ to: "+91" + ph, code: c });
-        ok = r.status === "approved";
-      }
-      if (!ok) return res.status(400).json({ error: "Incorrect OTP" });
-    } catch (e) {
-      if (e.status === 404) return res.status(400).json({ error: "OTP expired. Go back and request a new one." });
-      if (e.code === 60202) return res.status(429).json({ error: "Too many attempts. Request a new OTP." });
-      console.error("Twilio verify error:", e.message);
-      return res.status(500).json({ error: "Could not verify OTP. Please try again." });
-    }
+    const o = otps.get(ph);
+    if (!o || Date.now() > o.exp) return res.status(400).json({ error: "OTP expired. Go back and request a new one." });
+    if (++o.tries > 5) { otps.delete(ph); return res.status(429).json({ error: "Too many attempts. Request a new OTP." }); }
+    if (c !== o.code) return res.status(400).json({ error: "Incorrect OTP" });
+    otps.delete(ph);
     verifiedPhones.set(ph, Date.now() + 5 * 60 * 1000);
   }
 
